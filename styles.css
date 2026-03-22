@@ -17,6 +17,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+  height: 100%;
 }
 
 body {
@@ -37,6 +38,7 @@ body::before {
 
 .terminal {
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -46,9 +48,11 @@ body::before {
 .terminal__output {
   flex: 1;
   height: calc(100vh - 62px);
+  height: calc(100dvh - 62px);
   min-height: 0;
   padding: 28px 32px 78px;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ascii {
@@ -106,7 +110,7 @@ body::before {
   align-items: flex-end;
   gap: 10px;
   min-height: 46px;
-  padding: 8px 20px;
+  padding: 8px 20px calc(8px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line);
   background: rgba(2, 3, 5, 0.98);
 }
@@ -144,21 +148,56 @@ body::before {
 
 @media (max-width: 700px) {
   .terminal__output {
-    height: calc(100vh - 62px);
-    padding: 20px 16px 72px;
+    height: calc(100vh - 64px);
+    height: calc(100dvh - 64px);
+    padding: 16px 12px 88px;
   }
 
   .terminal__inputbar {
-    padding: 8px 12px;
+    gap: 8px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
   }
 
   .ascii {
-    font-size: 0.65rem;
+    font-size: 0.56rem;
+    line-height: 1.05;
   }
 
   .line,
   .prompt,
   #command-input {
-    font-size: 0.82rem;
+    font-size: 0.76rem;
+  }
+
+  .prompt {
+    max-width: 34vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #command-input {
+    min-height: 20px;
+    max-height: 120px;
+  }
+}
+
+@media (max-width: 420px) {
+  .terminal__output {
+    padding: 12px 10px 92px;
+  }
+
+  .terminal__inputbar {
+    align-items: center;
+    min-height: 52px;
+  }
+
+  .ascii {
+    font-size: 0.48rem;
+  }
+
+  .line,
+  .prompt,
+  #command-input {
+    font-size: 0.72rem;
   }
 }

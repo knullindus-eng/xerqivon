@@ -9,26 +9,31 @@ const ASCII_LOGO = String.raw`
 ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚══════╝
 `;
 
-const HELP_LINES = [
-  "commands",
-  "help    - show available commands",
-  "login   - admin login",
-  "admin   - admin login",
-  "logout  - end admin session",
-  "add     - bulk add apps or mails after admin login",
-  'apps format: name,link,description|name,link,description',
-  "apps    - print all apps",
-  "mails format: email1,email2,email3",
-  "or use one email per line",
-  "mails   - print all mail accounts",
-  "db      - show tables",
-  "db <table> - show rows from a table",
+const NORMAL_HELP_LINES = [
+  "normal commands",
+  "help         - show available commands",
+  "login        - admin login",
+  "admin        - admin login",
+  "apps         - print all apps",
+  "mails        - print all mail accounts",
+  "mails=gmail  - print gmail addresses",
+  "mails=yhoo   - print yahoo addresses",
+  "clear        - clear terminal output",
+  "cls          - clear terminal output",
+];
+
+const ADMIN_HELP_LINES = [
+  "admin commands",
+  "logout       - end admin session",
+  "add          - bulk add apps or mails",
+  "apps format  - name,link,description|name,link,description",
+  "mails format - email1,email2,email3",
+  "db           - show tables",
+  "db <table>   - show rows from a table",
   "wipe all data - delete all table data with y/n confirm",
   "wipe data from <table> - delete all rows from one table",
   "wipe <table> - drop a table",
-  "seed    - insert sample data after admin login",
-  "clear   - clear terminal output",
-  "cls     - clear terminal output",
+  "seed         - insert sample data",
 ];
 
 const PROMPT_TEXT = "root@knull:~$";
@@ -168,6 +173,24 @@ function appendMailGroups(emails) {
   }
 }
 
+function filterMailsByProvider(emails, provider) {
+  const aliases = {
+    gmail: ["gmail.com"],
+    yahoo: ["yahoo.com"],
+    yhoo: ["yahoo.com"],
+    outlook: ["outlook.com", "hotmail.com", "live.com"],
+    proton: ["proton.me", "protonmail.com"],
+  };
+
+  const domains = aliases[provider] || [provider];
+  return emails.filter((email) => {
+    const atIndex = email.lastIndexOf("@");
+    if (atIndex === -1) return false;
+    const domain = email.slice(atIndex + 1).toLowerCase();
+    return domains.includes(domain);
+  });
+}
+
 function setPrompt(text, isPassword = false) {
   elements.prompt.textContent = text;
   elements.input.dataset.password = isPassword ? "true" : "false";
@@ -246,7 +269,16 @@ function beginWipeAllConfirmFlow() {
 }
 
 function printHelp() {
-  HELP_LINES.forEach((line) => appendLine(line, "line--muted"));
+  NORMAL_HELP_LINES.forEach((line, index) =>
+    appendLine(line, index === 0 ? "line--muted" : "line--muted")
+  );
+
+  if (state.status?.adminAuthenticated) {
+    appendSpacer();
+    ADMIN_HELP_LINES.forEach((line, index) =>
+      appendLine(line, index === 0 ? "line--muted" : "line--muted")
+    );
+  }
 }
 
 function printStatusLines() {
@@ -536,6 +568,19 @@ async function runCommand(rawValue) {
     return;
   }
 
+  if (command.startsWith("mails=")) {
+    const provider = command.slice("mails=".length).trim();
+    if (!provider) {
+      appendLine("usage: mails=gmail", "line--error");
+      return;
+    }
+
+    const result = await withLoading(`reading ${provider} mails`, () => api.listMailAccounts());
+    const filtered = filterMailsByProvider(result.mails, provider);
+    appendMailGroups(filtered);
+    return;
+  }
+
   if (command === "db") {
     if (!requireAdmin()) return;
     const result = await withLoading("reading tables", () => api.getTables());
@@ -552,6 +597,12 @@ async function runCommand(rawValue) {
   }
 
   if (command === "wipe all data") {
+    if (!requireAdmin()) return;
+    beginWipeAllConfirmFlow();
+    return;
+  }
+
+  if (command === "wipe all") {
     if (!requireAdmin()) return;
     beginWipeAllConfirmFlow();
     return;
