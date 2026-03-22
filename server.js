@@ -5,15 +5,20 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
-const ROOT = fileURLToPath(new URL(".", import.meta.url));
-const env = loadEnv(join(ROOT, ".env"));
+const PROJECT_ROOT = fileURLToPath(new URL(".", import.meta.url));
+const PUBLIC_ROOT = fileURLToPath(new URL("./public/", import.meta.url));
+const env = {
+  ...loadEnv(join(PROJECT_ROOT, ".env")),
+  ...process.env,
+};
 const PORT = Number(env.PORT || 3000);
-const ADMIN_PASSWORD = env.ADMIN_PASSWORD || "Knull@123";
+const ADMIN_PASSWORD = env.ADMIN_PASSWORD;
 const DATABASE_URL = env.NEON_DATABASE_URL || env.NEON_DATABASE_URL_UNPOOLED;
 const SESSION_COOKIE = "knull_admin_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const sessions = new Map();
 const VALID_TABLES = new Set(["apps", "mail_accounts", "mails"]);
+const IS_PRODUCTION = env.NODE_ENV === "production";
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -137,13 +142,15 @@ function createSession() {
 }
 
 function sessionCookie(token, clear = false) {
+  const securePart = IS_PRODUCTION ? "; Secure" : "";
+
   if (clear) {
-    return `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`;
+    return `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${securePart}`;
   }
 
   return `${SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=${Math.floor(
     SESSION_TTL_MS / 1000
-  )}; SameSite=Lax`;
+  )}; SameSite=Lax${securePart}`;
 }
 
 function ensureAdmin(req, res) {
@@ -217,6 +224,12 @@ async function handleStatus(req, res) {
   json(res, 200, {
     dbConnected,
     adminAuthenticated: Boolean(session?.isAdmin),
+  });
+}
+
+async function handleHealth(_req, res) {
+  json(res, dbConnected ? 200 : 503, {
+    ok: dbConnected,
   });
 }
 
@@ -546,8 +559,8 @@ async function serveFile(req, res, pathname) {
     return;
   }
 
-  const filePath = normalize(join(ROOT, target));
-  if (!filePath.startsWith(ROOT) || !existsSync(filePath)) {
+  const filePath = normalize(join(PUBLIC_ROOT, target));
+  if (!filePath.startsWith(PUBLIC_ROOT) || !existsSync(filePath)) {
     notFound(res);
     return;
   }
@@ -565,6 +578,11 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === "/api/status" && req.method === "GET") {
       await handleStatus(req, res);
+      return;
+    }
+
+    if (url.pathname === "/healthz" && req.method === "GET") {
+      await handleHealth(req, res);
       return;
     }
 
@@ -654,6 +672,10 @@ try {
   await checkDatabase();
 } catch (error) {
   console.error("database boot failed", error);
+}
+
+if (!ADMIN_PASSWORD) {
+  console.warn("ADMIN_PASSWORD is not set. Admin login will not work until it is configured.");
 }
 
 server.listen(PORT, () => {
