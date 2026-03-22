@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
-import { createReadStream, existsSync, readFileSync } from "node:fs";
-import { extname, join, normalize } from "node:path";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { extname, join, normalize, resolve, sep } from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
@@ -552,15 +552,27 @@ async function handleDropTable(req, res, tableName) {
 }
 
 async function serveFile(req, res, pathname) {
-  let target = pathname === "/" ? "/index.html" : pathname;
+  const target = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
 
-  if (target.includes("..") || target.startsWith("/.")) {
+  if (target.includes("..") || target.startsWith(".")) {
     notFound(res);
     return;
   }
 
-  const filePath = normalize(join(PUBLIC_ROOT, target));
-  if (!filePath.startsWith(PUBLIC_ROOT) || !existsSync(filePath)) {
+  const publicRoot = resolve(PUBLIC_ROOT);
+  const filePath = resolve(join(publicRoot, target));
+  const insidePublic = filePath === publicRoot || filePath.startsWith(`${publicRoot}${sep}`);
+
+  if (!insidePublic || !existsSync(filePath) || !statSync(filePath).isFile()) {
+    const fallback = resolve(join(publicRoot, "index.html"));
+    if (existsSync(fallback) && statSync(fallback).isFile()) {
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+      });
+      createReadStream(fallback).pipe(res);
+      return;
+    }
+
     notFound(res);
     return;
   }
