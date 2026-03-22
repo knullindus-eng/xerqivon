@@ -1,50 +1,56 @@
 # Knull Terminal Vault
 
-Minimal terminal-style personal site built with plain HTML, CSS, and JavaScript.
+Terminal-style personal site with:
+
+- plain HTML, CSS, and JavaScript frontend
+- Node backend
+- Neon PostgreSQL database
+- admin-only add commands
 
 ## Current behavior
 
-- Shows only an ASCII `Knull` header and intro lines on load
-- Uses one command input like a terminal
-- `help` shows available commands
-- `add` starts a guided flow for apps or mails
-- `seed` inserts sample data
-- Uses local storage by default
-- Can switch to Turso when you add credentials
+- shows only the ASCII `Knull` header and boot lines on load
+- uses one terminal input
+- checks real Neon connection on startup
+- only admin can add apps and mails
+- admin login commands are `login` or `admin`
+- admin password is read from `.env`
 
-## Run
+## Environment
 
-Do not open `index.html` directly with `file://`.
+Set these in [`.env`](D:\simplecmd\.env):
 
-Use a local server instead:
+```env
+NEON_DATABASE_URL=postgresql://...
+NEON_DATABASE_URL_UNPOOLED=postgresql://...
+ADMIN_PASSWORD=Knull@123
+PORT=3000
+```
+
+## Install and run
 
 ```powershell
 cd D:\simplecmd
-python -m http.server 8080
+npm install
+npm start
 ```
 
-Then open [http://localhost:8080](http://localhost:8080).
+Then open [http://localhost:3000](http://localhost:3000).
 
 ## Commands
 
 - `help`
+- `login`
+- `admin`
+- `logout`
 - `add`
+- apps bulk format: `name,link,description|name,link,description`
+- mails bulk format: one mail per line as `email,sender,subject,snippet,body`
+- `db`
+- `db <table>`
+- `wipe all data`
+- `wipe data from <table>`
+- `wipe <table>`
 - `seed`
 - `clear`
 - `cls`
-
-## Turso setup
-
-1. Create a Turso database.
-2. Run the SQL from `schema.sql`.
-3. Open [`.env`](D:\simplecmd\.env)
-4. Add your Turso values:
-
-```env
-TURSO_DATABASE_URL=libsql://your-database-name.turso.io
-TURSO_AUTH_TOKEN=your-token-here
-```
-
-If the `.env` values are empty, the app stays on local storage automatically.
-
-Note: this browser-based `.env` loading is fine for your personal local use, but it is not suitable for a public production deployment because the browser can access those values.

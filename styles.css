@@ -36,13 +36,17 @@ body::before {
 }
 
 .terminal {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .terminal__output {
   flex: 1;
+  height: calc(100vh - 62px);
+  min-height: 0;
   padding: 28px 32px 78px;
   overflow: auto;
 }
@@ -79,6 +83,16 @@ body::before {
   color: #ff7f96;
 }
 
+.line--loading {
+  color: var(--accent);
+}
+
+.line-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .spacer {
   height: 12px;
 }
@@ -89,10 +103,10 @@ body::before {
   right: 0;
   bottom: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
   min-height: 46px;
-  padding: 0 20px;
+  padding: 8px 20px;
   border-top: 1px solid var(--line);
   background: rgba(2, 3, 5, 0.98);
 }
@@ -112,6 +126,16 @@ body::before {
   font: inherit;
   caret-color: var(--accent);
   font-size: 0.9rem;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.5;
+  min-height: 22px;
+  max-height: 140px;
+  padding: 0;
+}
+
+#command-input:disabled {
+  opacity: 0.6;
 }
 
 #command-input::placeholder {
@@ -120,11 +144,12 @@ body::before {
 
 @media (max-width: 700px) {
   .terminal__output {
+    height: calc(100vh - 62px);
     padding: 20px 16px 72px;
   }
 
   .terminal__inputbar {
-    padding: 0 12px;
+    padding: 8px 12px;
   }
 
   .ascii {
