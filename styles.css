@@ -1,0 +1,139 @@
+:root {
+  --bg: #020305;
+  --grid: rgba(43, 179, 255, 0.06);
+  --text: #cfe2f2;
+  --muted: #708395;
+  --accent: #2bb3ff;
+  --accent-soft: rgba(43, 179, 255, 0.12);
+  --success: #55f0a5;
+  --line: rgba(43, 179, 255, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "IBM Plex Mono", monospace;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, var(--grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.22;
+}
+
+.terminal {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal__output {
+  flex: 1;
+  padding: 28px 32px 78px;
+  overflow: auto;
+}
+
+.ascii {
+  margin: 0 0 16px;
+  color: var(--accent);
+  font-size: clamp(0.78rem, 1.1vw, 0.98rem);
+  line-height: 1;
+  text-shadow: 2px 2px 0 rgba(43, 179, 255, 0.16);
+}
+
+.line {
+  margin: 0 0 6px;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.line--muted {
+  color: var(--muted);
+}
+
+.line--success {
+  color: var(--success);
+}
+
+.line--command {
+  color: var(--accent);
+}
+
+.line--error {
+  color: #ff7f96;
+}
+
+.spacer {
+  height: 12px;
+}
+
+.terminal__inputbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 20px;
+  border-top: 1px solid var(--line);
+  background: rgba(2, 3, 5, 0.98);
+}
+
+.prompt {
+  color: var(--accent);
+  white-space: nowrap;
+  font-size: 0.88rem;
+}
+
+#command-input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  caret-color: var(--accent);
+  font-size: 0.9rem;
+}
+
+#command-input::placeholder {
+  color: rgba(216, 236, 255, 0.28);
+}
+
+@media (max-width: 700px) {
+  .terminal__output {
+    padding: 20px 16px 72px;
+  }
+
+  .terminal__inputbar {
+    padding: 0 12px;
+  }
+
+  .ascii {
+    font-size: 0.65rem;
+  }
+
+  .line,
+  .prompt,
+  #command-input {
+    font-size: 0.82rem;
+  }
+}

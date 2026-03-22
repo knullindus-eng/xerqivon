@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Knull Terminal Vault</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="terminal">
+      <section id="terminal-output" class="terminal__output" aria-live="polite"></section>
+
+      <form id="command-form" class="terminal__inputbar" autocomplete="off">
+        <label class="prompt" for="command-input">C:\Knull&gt;</label>
+        <input
+          id="command-input"
+          name="command"
+          type="text"
+          spellcheck="false"
+          autofocus
+          placeholder='type "help"'
+        />
+      </form>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
