@@ -42,13 +42,6 @@ export const api = {
     });
   },
 
-  addMail(payload) {
-    return request("/api/mails", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-
   bulkAddApps(apps) {
     return request("/api/apps/bulk", {
       method: "POST",

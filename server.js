@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
-import { extname, join, normalize, resolve, sep } from "node:path";
+import { extname, join, resolve, sep } from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
@@ -17,8 +17,12 @@ const DATABASE_URL = env.NEON_DATABASE_URL || env.NEON_DATABASE_URL_UNPOOLED;
 const SESSION_COOKIE = "knull_admin_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const sessions = new Map();
-const VALID_TABLES = new Set(["apps", "mail_accounts", "mails"]);
+const VALID_TABLES = new Set(["apps", "mail_accounts"]);
 const IS_PRODUCTION = env.NODE_ENV === "production";
+const LOGIN_WINDOW_MS = 1000 * 60 * 15;
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCK_MS = 1000 * 60 * 15;
+const loginAttempts = new Map();
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -133,6 +137,51 @@ function cleanupSessions() {
   }
 }
 
+function getClientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.trim()) {
+    return forwarded.split(",")[0].trim();
+  }
+
+  return req.socket.remoteAddress || "unknown";
+}
+
+function getLoginState(ip) {
+  const now = Date.now();
+  const current = loginAttempts.get(ip);
+  if (!current) return { count: 0, windowStartedAt: now, lockedUntil: 0 };
+
+  if (current.lockedUntil && current.lockedUntil > now) {
+    return current;
+  }
+
+  if (now - current.windowStartedAt > LOGIN_WINDOW_MS) {
+    const reset = { count: 0, windowStartedAt: now, lockedUntil: 0 };
+    loginAttempts.set(ip, reset);
+    return reset;
+  }
+
+  return current;
+}
+
+function recordFailedLogin(ip) {
+  const now = Date.now();
+  const current = getLoginState(ip);
+  const nextCount = current.count + 1;
+  const nextState = {
+    count: nextCount,
+    windowStartedAt: current.windowStartedAt || now,
+    lockedUntil: nextCount >= LOGIN_MAX_ATTEMPTS ? now + LOGIN_LOCK_MS : 0,
+  };
+
+  loginAttempts.set(ip, nextState);
+  return nextState;
+}
+
+function clearLoginAttempts(ip) {
+  loginAttempts.delete(ip);
+}
+
 function createSession() {
   const token = crypto.randomBytes(24).toString("hex");
   sessions.set(token, {
@@ -164,12 +213,6 @@ function ensureAdmin(req, res) {
   return session;
 }
 
-function ensureDatabase(res) {
-  if (pool && dbConnected) return true;
-  json(res, 503, { error: "database unavailable" });
-  return false;
-}
-
 async function ensureSchema() {
   if (!pool) return;
 
@@ -190,19 +233,6 @@ async function ensureSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS mails (
-      id TEXT PRIMARY KEY,
-      account_id TEXT NOT NULL REFERENCES mail_accounts(id) ON DELETE CASCADE,
-      sender TEXT NOT NULL,
-      subject TEXT NOT NULL,
-      snippet TEXT NOT NULL,
-      body TEXT NOT NULL,
-      received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
 }
 
 async function checkDatabase() {
@@ -216,11 +246,46 @@ async function checkDatabase() {
   dbConnected = true;
 }
 
+async function refreshDatabaseStatus() {
+  if (!pool) {
+    dbConnected = false;
+    return false;
+  }
+
+  try {
+    await pool.query("SELECT 1");
+    await ensureSchema();
+    dbConnected = true;
+    return true;
+  } catch (error) {
+    dbConnected = false;
+    throw error;
+  }
+}
+
+async function ensureDatabase(res) {
+  try {
+    const ok = await refreshDatabaseStatus();
+    if (ok) return true;
+  } catch {
+    // dbConnected is updated in refreshDatabaseStatus
+  }
+
+  json(res, 503, { error: "database unavailable" });
+  return false;
+}
+
 function createId(prefix) {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
 async function handleStatus(req, res) {
+  try {
+    await refreshDatabaseStatus();
+  } catch {
+    // report latest dbConnected state below
+  }
+
   const session = getSession(req);
   json(res, 200, {
     dbConnected,
@@ -229,18 +294,40 @@ async function handleStatus(req, res) {
 }
 
 async function handleHealth(_req, res) {
+  try {
+    await refreshDatabaseStatus();
+  } catch {
+    // report latest dbConnected state below
+  }
+
   json(res, dbConnected ? 200 : 503, {
     ok: dbConnected,
   });
 }
 
 async function handleAdminLogin(req, res) {
+  const ip = getClientIp(req);
+  const loginState = getLoginState(ip);
+  if (loginState.lockedUntil && loginState.lockedUntil > Date.now()) {
+    const retryAfterSeconds = Math.ceil((loginState.lockedUntil - Date.now()) / 1000);
+    json(
+      res,
+      429,
+      { error: `too many login attempts. try again in ${retryAfterSeconds}s` },
+      { "Retry-After": String(retryAfterSeconds) }
+    );
+    return;
+  }
+
   const body = await readBody(req);
   if (body.password !== ADMIN_PASSWORD) {
+    const failure = recordFailedLogin(ip);
+    console.warn(`admin login failed from ${ip} (${failure.count} attempts in window)`);
     json(res, 401, { error: "invalid admin password" });
     return;
   }
 
+  clearLoginAttempts(ip);
   const token = createSession();
   json(
     res,
@@ -265,7 +352,7 @@ async function handleAdminLogout(_req, res) {
 
 async function handleAddApp(req, res) {
   if (!ensureAdmin(req, res)) return;
-  if (!ensureDatabase(res)) return;
+  if (!(await ensureDatabase(res))) return;
   const body = await readBody(req);
 
   if (!body.name || !body.link || !body.description) {
@@ -283,7 +370,7 @@ async function handleAddApp(req, res) {
 }
 
 async function handleListApps(_req, res) {
-  if (!ensureDatabase(res)) return;
+  if (!(await ensureDatabase(res))) return;
   const result = await pool.query(`
     SELECT name, description, link
     FROM apps
@@ -292,62 +379,9 @@ async function handleListApps(_req, res) {
   json(res, 200, { apps: result.rows });
 }
 
-async function handleAddMail(req, res) {
-  if (!ensureAdmin(req, res)) return;
-  if (!ensureDatabase(res)) return;
-  const body = await readBody(req);
-
-  if (!body.accountEmail || !body.sender || !body.subject || !body.snippet || !body.body) {
-    json(res, 400, { error: "all mail fields are required" });
-    return;
-  }
-
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-
-    const email = body.accountEmail.trim().toLowerCase();
-    let accountResult = await client.query(
-      "SELECT id FROM mail_accounts WHERE email = $1",
-      [email]
-    );
-
-    let accountId = accountResult.rows[0]?.id;
-    if (!accountId) {
-      accountId = createId("account");
-      await client.query(
-        "INSERT INTO mail_accounts (id, email) VALUES ($1, $2)",
-        [accountId, email]
-      );
-    }
-
-    const mailId = createId("mail");
-    await client.query(
-      `INSERT INTO mails (id, account_id, sender, subject, snippet, body, received_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-      [
-        mailId,
-        accountId,
-        body.sender.trim(),
-        body.subject.trim(),
-        body.snippet.trim(),
-        body.body.trim(),
-      ]
-    );
-
-    await client.query("COMMIT");
-    json(res, 201, { ok: true, id: mailId });
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
 async function handleBulkAddApps(req, res) {
   if (!ensureAdmin(req, res)) return;
-  if (!ensureDatabase(res)) return;
+  if (!(await ensureDatabase(res))) return;
   const body = await readBody(req);
   const apps = Array.isArray(body.apps) ? body.apps : [];
 
@@ -383,7 +417,7 @@ async function handleBulkAddApps(req, res) {
 
 async function handleBulkAddMails(req, res) {
   if (!ensureAdmin(req, res)) return;
-  if (!ensureDatabase(res)) return;
+  if (!(await ensureDatabase(res))) return;
   const body = await readBody(req);
   const mails = Array.isArray(body.mails) ? body.mails : [];
 
@@ -393,6 +427,7 @@ async function handleBulkAddMails(req, res) {
   }
 
   const client = await pool.connect();
+  let inserted = 0;
   try {
     await client.query("BEGIN");
 
@@ -402,16 +437,17 @@ async function handleBulkAddMails(req, res) {
       }
 
       const email = mail.accountEmail.trim().toLowerCase();
-      await client.query(
+      const result = await client.query(
         `INSERT INTO mail_accounts (id, email)
          VALUES ($1, $2)
          ON CONFLICT (email) DO NOTHING`,
         [createId("account"), email]
       );
+      inserted += result.rowCount || 0;
     }
 
     await client.query("COMMIT");
-    json(res, 201, { ok: true, inserted: mails.length });
+    json(res, 201, { ok: true, inserted });
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -421,7 +457,7 @@ async function handleBulkAddMails(req, res) {
 }
 
 async function handleListMailAccounts(_req, res) {
-  if (!ensureDatabase(res)) return;
+  if (!(await ensureDatabase(res))) return;
   const result = await pool.query(`
     SELECT email
     FROM mail_accounts
@@ -432,15 +468,15 @@ async function handleListMailAccounts(_req, res) {
 
 async function handleSeed(req, res) {
   if (!ensureAdmin(req, res)) return;
-  if (!ensureDatabase(res)) return;
+  if (!(await ensureDatabase(res))) return;
 
   const counts = await pool.query(`
     SELECT
       (SELECT COUNT(*)::int FROM apps) AS app_count,
-      (SELECT COUNT(*)::int FROM mails) AS mail_count
+      (SELECT COUNT(*)::int FROM mail_accounts) AS mail_account_count
   `);
 
-  if (counts.rows[0].app_count > 0 || counts.rows[0].mail_count > 0) {
+  if (counts.rows[0].app_count > 0 || counts.rows[0].mail_account_count > 0) {
     json(res, 200, { inserted: false });
     return;
   }
@@ -449,10 +485,9 @@ async function handleSeed(req, res) {
   try {
     await client.query("BEGIN");
 
-    const accountId = createId("account");
     await client.query(
       "INSERT INTO mail_accounts (id, email) VALUES ($1, $2)",
-      [accountId, "primary@gmail.com"]
+      [createId("account"), "primary@gmail.com"]
     );
 
     await client.query(
@@ -463,19 +498,6 @@ async function handleSeed(req, res) {
     await client.query(
       "INSERT INTO apps (id, name, link, description) VALUES ($1, $2, $3, $4)",
       [createId("app"), "Brave Browser", "https://brave.com/download/", "Fast browser for work, testing, and private browsing."]
-    );
-
-    await client.query(
-      `INSERT INTO mails (id, account_id, sender, subject, snippet, body, received_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-      [
-        createId("mail"),
-        accountId,
-        "alerts@example.com",
-        "Security check completed",
-        "No new threats detected in your account.",
-        "Daily summary: all systems look stable. No unusual sign-ins were detected.",
-      ]
     );
 
     await client.query("COMMIT");
@@ -498,7 +520,7 @@ function getSafeTableName(value) {
 
 async function handleDbTables(req, res) {
   if (!ensureAdmin(req, res)) return;
-  if (!ensureDatabase(res)) return;
+  if (!(await ensureDatabase(res))) return;
 
   const existingTables = await pool.query(`
     SELECT table_name
@@ -523,7 +545,7 @@ async function handleDbTables(req, res) {
 
 async function handleDbTable(req, res, tableName) {
   if (!ensureAdmin(req, res)) return;
-  if (!ensureDatabase(res)) return;
+  if (!(await ensureDatabase(res))) return;
   const safeTable = getSafeTableName(tableName);
   const result = await pool.query(`SELECT * FROM ${safeTable} ORDER BY 1 DESC LIMIT 50`);
   json(res, 200, { rows: result.rows });
@@ -531,14 +553,14 @@ async function handleDbTable(req, res, tableName) {
 
 async function handleWipeAllData(req, res) {
   if (!ensureAdmin(req, res)) return;
-  if (!ensureDatabase(res)) return;
-  await pool.query("TRUNCATE TABLE mails, mail_accounts, apps RESTART IDENTITY CASCADE");
+  if (!(await ensureDatabase(res))) return;
+  await pool.query("TRUNCATE TABLE mail_accounts, apps RESTART IDENTITY CASCADE");
   json(res, 200, { ok: true });
 }
 
 async function handleWipeTableData(req, res, tableName) {
   if (!ensureAdmin(req, res)) return;
-  if (!ensureDatabase(res)) return;
+  if (!(await ensureDatabase(res))) return;
   const safeTable = getSafeTableName(tableName);
   await pool.query(`TRUNCATE TABLE ${safeTable} RESTART IDENTITY CASCADE`);
   json(res, 200, { ok: true });
@@ -546,9 +568,10 @@ async function handleWipeTableData(req, res, tableName) {
 
 async function handleDropTable(req, res, tableName) {
   if (!ensureAdmin(req, res)) return;
-  if (!ensureDatabase(res)) return;
+  if (!(await ensureDatabase(res))) return;
   const safeTable = getSafeTableName(tableName);
   await pool.query(`DROP TABLE IF EXISTS ${safeTable} CASCADE`);
+  await ensureSchema();
   json(res, 200, { ok: true });
 }
 
@@ -621,11 +644,6 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === "/api/apps/bulk" && req.method === "POST") {
       await handleBulkAddApps(req, res);
-      return;
-    }
-
-    if (url.pathname === "/api/mails" && req.method === "POST") {
-      await handleAddMail(req, res);
       return;
     }
 
