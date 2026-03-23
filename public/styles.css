@@ -70,9 +70,95 @@ body::before {
 .ascii {
   margin: 0 0 16px;
   color: var(--accent);
-  font-size: clamp(0.78rem, 1.1vw, 0.98rem);
-  line-height: 1;
-  text-shadow: 2px 2px 0 rgba(43, 179, 255, 0.16);
+  font-size: clamp(0.8rem, 1.15vw, 1rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.08;
+  text-shadow:
+    0 0 10px rgba(43, 179, 255, 0.18),
+    2px 2px 0 rgba(43, 179, 255, 0.12);
+}
+
+.ascii__line {
+  display: block;
+  animation-name: asciiFlicker;
+  animation-duration: var(--flicker-duration, 4.2s);
+  animation-delay: var(--flicker-delay, 0s);
+  animation-timing-function: steps(1, end);
+  animation-iteration-count: infinite;
+}
+
+@keyframes asciiFlicker {
+  0%,
+  100% {
+    opacity: 0.92;
+    text-shadow:
+      0 0 8px rgba(43, 179, 255, 0.14),
+      2px 2px 0 rgba(43, 179, 255, 0.1);
+  }
+
+  8% {
+    opacity: 1;
+    text-shadow:
+      0 0 18px rgba(43, 179, 255, 0.24),
+      2px 2px 0 rgba(43, 179, 255, 0.16);
+  }
+
+  11% {
+    opacity: 0.42;
+    text-shadow:
+      0 0 3px rgba(43, 179, 255, 0.08),
+      1px 1px 0 rgba(43, 179, 255, 0.06);
+  }
+
+  13% {
+    opacity: 0.98;
+    text-shadow:
+      0 0 20px rgba(43, 179, 255, 0.22),
+      2px 2px 0 rgba(43, 179, 255, 0.14);
+  }
+
+  27% {
+    opacity: 0.88;
+  }
+
+  29% {
+    opacity: 0.28;
+    text-shadow:
+      0 0 2px rgba(43, 179, 255, 0.06),
+      1px 1px 0 rgba(43, 179, 255, 0.04);
+  }
+
+  31% {
+    opacity: 0.96;
+  }
+
+  53% {
+    opacity: 1;
+    text-shadow:
+      0 0 16px rgba(43, 179, 255, 0.2),
+      2px 2px 0 rgba(43, 179, 255, 0.14);
+  }
+
+  56% {
+    opacity: 0.52;
+  }
+
+  58% {
+    opacity: 0.95;
+  }
+
+  72% {
+    opacity: 0.9;
+  }
+
+  74% {
+    opacity: 0.34;
+  }
+
+  76% {
+    opacity: 0.97;
+  }
 }
 
 .line {
@@ -171,7 +257,7 @@ body::before {
   }
 
   .ascii {
-    font-size: 0.56rem;
+    font-size: 0.58rem;
     line-height: 1.05;
   }
 
@@ -204,7 +290,7 @@ body::before {
   }
 
   .ascii {
-    font-size: 0.48rem;
+    font-size: 0.5rem;
   }
 
   .line,

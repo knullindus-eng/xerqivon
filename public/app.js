@@ -1,11 +1,12 @@
 import { api } from "./db.js";
 
 const ASCII_LOGO = String.raw`
- _  ___   _ _   _ _     _
-| |/ / | | | | | | |   | |
-| ' /| |_| | | | | |   | |
-| . \|  _  | |_| | |___| |
-|_|\_\_| |_|\___/|_____|_|
+██╗  ██╗███╗   ██╗██╗   ██╗██╗     ██╗
+██║ ██╔╝████╗  ██║██║   ██║██║     ██║
+█████╔╝ ██╔██╗ ██║██║   ██║██║     ██║
+██╔═██╗ ██║╚██╗██║██║   ██║██║     ██║
+██║  ██╗██║ ╚████║╚██████╔╝███████╗███████╗
+╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚══════╝
 `;
 
 const NORMAL_HELP_LINES = [
@@ -103,7 +104,17 @@ function appendAppRow(app) {
 function appendAscii(text) {
   const pre = document.createElement("pre");
   pre.className = "ascii";
-  pre.textContent = text;
+  const lines = text.trim().split("\n");
+
+  lines.forEach((line, index) => {
+    const span = document.createElement("span");
+    span.className = "ascii__line";
+    span.textContent = line;
+    span.style.setProperty("--flicker-delay", `${(index * 0.37).toFixed(2)}s`);
+    span.style.setProperty("--flicker-duration", `${(3.8 + index * 0.43).toFixed(2)}s`);
+    pre.appendChild(span);
+  });
+
   return enqueueOutput(() => appendNode(pre));
 }
 
