@@ -9,6 +9,7 @@ const NORMAL_HELP_LINES = [
   "toot off     - disable sound",
   "apps         - print all apps",
   "mails        - print all mail accounts",
+  "search mails <text> - find mail accounts by text",
   "mails=gmail  - print gmail addresses",
   "mails=yhoo   - print yahoo addresses",
   "clear        - clear terminal output",
@@ -21,6 +22,7 @@ const ADMIN_HELP_LINES = [
   "add          - bulk add apps or mails",
   "apps format  - name,link,description|name,link,description",
   "mails format - email1,email2,email3",
+  "delete mail <email> - delete one mail account",
   "db           - show tables",
   "db <table>   - show rows from a table",
   "wipe all data - delete all table data with y/n confirm",
@@ -711,6 +713,19 @@ async function runCommand(rawValue) {
     return;
   }
 
+  if (command.startsWith("search mails ")) {
+    const query = rawValue.slice("search mails ".length).trim().toLowerCase();
+    if (!query) {
+      appendLine("usage: search mails <text>", "line--error");
+      return;
+    }
+
+    const result = await withLoading(`searching mails for ${query}`, () => api.listMailAccounts());
+    const filtered = result.mails.filter((email) => email.toLowerCase().includes(query));
+    appendMailGroups(filtered);
+    return;
+  }
+
   if (command.startsWith("mails=")) {
     const provider = command.slice("mails=".length).trim();
     if (!provider) {
@@ -721,6 +736,19 @@ async function runCommand(rawValue) {
     const result = await withLoading(`reading ${provider} mails`, () => api.listMailAccounts());
     const filtered = filterMailsByProvider(result.mails, provider);
     appendMailGroups(filtered);
+    return;
+  }
+
+  if (command.startsWith("delete mail ")) {
+    if (!requireAdmin()) return;
+    const email = rawValue.slice("delete mail ".length).trim().toLowerCase();
+    if (!email) {
+      appendLine("usage: delete mail <email>", "line--error");
+      return;
+    }
+
+    await withLoading(`deleting ${email}`, () => api.deleteMailAccount(email));
+    appendLine(`mail account deleted: ${email}`, "line--success");
     return;
   }
 

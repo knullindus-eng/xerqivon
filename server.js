@@ -497,6 +497,29 @@ async function handleListMailAccounts(_req, res) {
   json(res, 200, { mails: result.rows.map((row) => row.email) });
 }
 
+async function handleDeleteMailAccount(req, res, emailValue) {
+  if (!ensureAdmin(req, res)) return;
+  if (!(await ensureDatabase(res))) return;
+
+  const email = String(emailValue || "").trim().toLowerCase();
+  if (!email) {
+    json(res, 400, { error: "email is required" });
+    return;
+  }
+
+  const result = await pool.query(
+    "DELETE FROM mail_accounts WHERE email = $1",
+    [email]
+  );
+
+  if (!result.rowCount) {
+    json(res, 404, { error: "mail account not found" });
+    return;
+  }
+
+  json(res, 200, { ok: true, deleted: email });
+}
+
 async function handleSeed(req, res) {
   if (!ensureAdmin(req, res)) return;
   if (!(await ensureDatabase(res))) return;
@@ -681,6 +704,15 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === "/api/mail-accounts" && req.method === "GET") {
       await handleListMailAccounts(req, res);
+      return;
+    }
+
+    if (url.pathname.startsWith("/api/mail-accounts/") && req.method === "DELETE") {
+      await handleDeleteMailAccount(
+        req,
+        res,
+        decodeURIComponent(url.pathname.slice("/api/mail-accounts/".length))
+      );
       return;
     }
 

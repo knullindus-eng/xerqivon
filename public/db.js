@@ -64,6 +64,13 @@ export const api = {
     return request("/api/mail-accounts");
   },
 
+  deleteMailAccount(email) {
+    return request(`/api/mail-accounts/${encodeURIComponent(email)}`, {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
+  },
+
   seed() {
     return request("/api/seed", {
       method: "POST",
