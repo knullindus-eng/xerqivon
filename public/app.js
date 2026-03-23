@@ -636,6 +636,29 @@ function normalizeTableName(value) {
   return value.trim().replace(/^<|>$/g, "").trim();
 }
 
+function normalizeSearchValue(value) {
+  return value.trim().replace(/^["'<]+|[>"']+$/g, "").trim().toLowerCase();
+}
+
+function normalizeMailSearchToken(value) {
+  return normalizeSearchValue(value).replace(/[^a-z0-9@._+-]/g, "");
+}
+
+function matchesMailSearch(email, query) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedQuery = normalizeMailSearchToken(query);
+
+  if (!normalizedQuery) return false;
+  if (normalizedEmail.includes(normalizedQuery)) return true;
+
+  const localPart = normalizedEmail.split("@")[0] || "";
+  if (localPart.includes(normalizedQuery)) return true;
+
+  const compactEmail = normalizedEmail.replace(/[^a-z0-9]/g, "");
+  const compactQuery = normalizedQuery.replace(/[^a-z0-9]/g, "");
+  return compactQuery ? compactEmail.includes(compactQuery) : false;
+}
+
 async function runCommand(rawValue) {
   const command = rawValue.trim().toLowerCase();
   if (!command) return;
@@ -714,14 +737,14 @@ async function runCommand(rawValue) {
   }
 
   if (command.startsWith("search mails ")) {
-    const query = rawValue.slice("search mails ".length).trim().toLowerCase();
+    const query = rawValue.slice("search mails ".length);
     if (!query) {
       appendLine("usage: search mails <text>", "line--error");
       return;
     }
 
     const result = await withLoading(`searching mails for ${query}`, () => api.listMailAccounts());
-    const filtered = result.mails.filter((email) => email.toLowerCase().includes(query));
+    const filtered = result.mails.filter((email) => matchesMailSearch(email, query));
     appendMailGroups(filtered);
     return;
   }
