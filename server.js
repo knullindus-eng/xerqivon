@@ -23,6 +23,7 @@ const LOGIN_WINDOW_MS = 1000 * 60 * 15;
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_LOCK_MS = 1000 * 60 * 15;
 const loginAttempts = new Map();
+const DATABASE_STATUS_TTL_MS = 1000 * 10;
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -44,6 +45,9 @@ const pool = DATABASE_URL
   : null;
 
 let dbConnected = false;
+let schemaReady = false;
+let lastDatabaseCheckAt = 0;
+let databaseRefreshInFlight = null;
 
 function loadEnv(path) {
   if (!existsSync(path)) return {};
@@ -238,29 +242,58 @@ async function ensureSchema() {
 async function checkDatabase() {
   if (!pool) {
     dbConnected = false;
+    schemaReady = false;
+    lastDatabaseCheckAt = 0;
     return;
   }
 
   await pool.query("SELECT 1");
   await ensureSchema();
   dbConnected = true;
+  schemaReady = true;
+  lastDatabaseCheckAt = Date.now();
 }
 
 async function refreshDatabaseStatus() {
   if (!pool) {
     dbConnected = false;
+    schemaReady = false;
+    lastDatabaseCheckAt = 0;
     return false;
+  }
+
+  if (dbConnected && Date.now() - lastDatabaseCheckAt < DATABASE_STATUS_TTL_MS) {
+    return true;
   }
 
   try {
     await pool.query("SELECT 1");
-    await ensureSchema();
+    if (!schemaReady) {
+      await ensureSchema();
+      schemaReady = true;
+    }
     dbConnected = true;
+    lastDatabaseCheckAt = Date.now();
     return true;
   } catch (error) {
     dbConnected = false;
+    lastDatabaseCheckAt = Date.now();
     throw error;
   }
+}
+
+function refreshDatabaseStatusInBackground() {
+  if (databaseRefreshInFlight) return databaseRefreshInFlight;
+
+  databaseRefreshInFlight = refreshDatabaseStatus()
+    .catch(() => {
+      // Keep cached status if the background refresh fails.
+    })
+    .finally(() => {
+      databaseRefreshInFlight = null;
+    });
+
+  return databaseRefreshInFlight;
 }
 
 async function ensureDatabase(res) {
@@ -280,10 +313,8 @@ function createId(prefix) {
 }
 
 async function handleStatus(req, res) {
-  try {
-    await refreshDatabaseStatus();
-  } catch {
-    // report latest dbConnected state below
+  if (Date.now() - lastDatabaseCheckAt > DATABASE_STATUS_TTL_MS) {
+    refreshDatabaseStatusInBackground();
   }
 
   const session = getSession(req);
@@ -572,6 +603,7 @@ async function handleDropTable(req, res, tableName) {
   const safeTable = getSafeTableName(tableName);
   await pool.query(`DROP TABLE IF EXISTS ${safeTable} CASCADE`);
   await ensureSchema();
+  schemaReady = true;
   json(res, 200, { ok: true });
 }
 

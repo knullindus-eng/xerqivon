@@ -1,19 +1,12 @@
 import { api } from "./db.js";
 
-const ASCII_LOGO = String.raw`
-██╗  ██╗███╗   ██╗██╗   ██╗██╗     ██╗
-██║ ██╔╝████╗  ██║██║   ██║██║     ██║
-█████╔╝ ██╔██╗ ██║██║   ██║██║     ██║
-██╔═██╗ ██║╚██╗██║██║   ██║██║     ██║
-██║  ██╗██║ ╚████║╚██████╔╝███████╗███████╗
-╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚══════╝
-`;
-
 const NORMAL_HELP_LINES = [
   "normal commands",
   "help         - show available commands",
   "login        - admin login",
   "admin        - admin login",
+  "toot on      - enable sound",
+  "toot off     - disable sound",
   "apps         - print all apps",
   "mails        - print all mail accounts",
   "mails=gmail  - print gmail addresses",
@@ -36,8 +29,111 @@ const ADMIN_HELP_LINES = [
   "seed         - insert sample data",
 ];
 
+const ASCII_LOGO = String.raw`
+██╗  ██╗███╗   ██╗██╗   ██╗██╗     ██╗
+██║ ██╔╝████╗  ██║██║   ██║██║     ██║
+█████╔╝ ██╔██╗ ██║██║   ██║██║     ██║
+██╔═██╗ ██║╚██╗██║██║   ██║██║     ██║
+██║  ██╗██║ ╚████║╚██████╔╝███████╗███████╗
+╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚══════╝
+`;
+
 const PROMPT_TEXT = "root@knull:~$";
 const PASSWORD_PROMPT = "password@knull:~$";
+const SOUND_PREF_KEY = "knull_sound_enabled";
+
+const sound = {
+  context: null,
+  master: null,
+  unlocked: false,
+  enabled: loadSoundPreference(),
+
+  ensureContext() {
+    if (!window.AudioContext && !window.webkitAudioContext) return;
+    if (!this.context) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      this.context = new AudioCtx();
+      this.master = this.context.createGain();
+      this.master.gain.value = 1.8;
+      this.master.connect(this.context.destination);
+    }
+  },
+
+  async unlock() {
+    this.ensureContext();
+    if (!this.context) return;
+
+    if (this.context.state === "suspended") {
+      await this.context.resume();
+    }
+
+    this.unlocked = this.context.state === "running";
+  },
+
+  pulse({ type = "sine", frequency = 440, duration = 0.05, volume = 0.03, attack = 0.002, release = 0.05, detune = 0 } = {}) {
+    if (!this.enabled || !this.unlocked || !this.context || !this.master) return;
+
+    const now = this.context.currentTime;
+    const gain = this.context.createGain();
+    const osc = this.context.createOscillator();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, now);
+    osc.detune.setValueAtTime(detune, now);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(volume, now + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + release);
+
+    osc.connect(gain);
+    gain.connect(this.master);
+
+    osc.start(now);
+    osc.stop(now + duration + release + 0.01);
+  },
+
+  chirp({ type = "triangle", from = 780, to = 520, duration = 0.018, volume = 0.11, attack = 0.001, release = 0.018 } = {}) {
+    if (!this.enabled || !this.unlocked || !this.context || !this.master) return;
+
+    const now = this.context.currentTime;
+    const gain = this.context.createGain();
+    const osc = this.context.createOscillator();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(from, now);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, to), now + duration);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(volume, now + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + release);
+
+    osc.connect(gain);
+    gain.connect(this.master);
+
+    osc.start(now);
+    osc.stop(now + duration + release + 0.01);
+  },
+
+  playPrint() {
+    this.chirp({
+      type: "triangle",
+      from: 760 + Math.random() * 90,
+      to: 500 + Math.random() * 70,
+      duration: 0.016,
+      volume: 0.12,
+      release: 0.016,
+    });
+  },
+
+  setEnabled(nextValue) {
+    this.enabled = nextValue;
+    try {
+      localStorage.setItem(SOUND_PREF_KEY, nextValue ? "1" : "0");
+    } catch {
+      // Ignore storage failures and keep the in-memory setting.
+    }
+  },
+};
 
 const state = {
   status: null,
@@ -52,6 +148,14 @@ const elements = {
   input: document.querySelector("#command-input"),
   prompt: document.querySelector(".prompt"),
 };
+
+function loadSoundPreference() {
+  try {
+    return localStorage.getItem(SOUND_PREF_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
 
 function scrollToBottom() {
   const output = elements.output;
@@ -75,6 +179,9 @@ function appendLineNow(text, variant = "") {
   div.className = variant ? `line ${variant}` : "line";
   div.textContent = text;
   appendNode(div);
+  if (!variant.includes("loading")) {
+    sound.playPrint();
+  }
   return div;
 }
 
@@ -98,7 +205,10 @@ function appendAppRow(app) {
   link.textContent = "download";
   row.appendChild(link);
 
-  enqueueOutput(() => appendNode(row));
+  enqueueOutput(() => {
+    appendNode(row);
+    sound.playPrint();
+  });
 }
 
 function appendAscii(text) {
@@ -279,15 +389,13 @@ function beginWipeAllConfirmFlow() {
 }
 
 function printHelp() {
-  NORMAL_HELP_LINES.forEach((line, index) =>
-    appendLine(line, index === 0 ? "line--muted" : "line--muted")
-  );
+  appendLine("normal commands", "line--muted");
+  NORMAL_HELP_LINES.slice(1).forEach((line) => appendLine(line, "line--muted"));
 
   if (state.status?.adminAuthenticated) {
     appendSpacer();
-    ADMIN_HELP_LINES.forEach((line, index) =>
-      appendLine(line, index === 0 ? "line--muted" : "line--muted")
-    );
+    appendLine("admin commands", "line--muted");
+    ADMIN_HELP_LINES.slice(1).forEach((line) => appendLine(line, "line--muted"));
   }
 }
 
@@ -337,24 +445,37 @@ function waitForPaint() {
   });
 }
 
-async function withLoading(label, action) {
+async function withLoading(label, action, options = {}) {
   if (state.loading) {
     return action();
   }
 
-  const line = appendLine(`${label} [   ]`, "line--loading");
+  const minDuration = options.minDuration ?? 180;
+
+  const frames = [
+    "\u280b",
+    "\u2819",
+    "\u2839",
+    "\u2838",
+    "\u283c",
+    "\u2834",
+    "\u2826",
+    "\u2827",
+    "\u2807",
+    "\u280f",
+  ];
+  const line = appendLine(`${frames[0]} ${label}`, "line--loading");
   await state.outputQueue;
   const loadingLine = elements.output.lastElementChild;
-  const frames = ["[   ]", "[.  ]", "[.. ]", "[...]"];
   let frameIndex = 0;
   const startedAt = Date.now();
 
   state.loading = {
     timer: setInterval(() => {
       frameIndex = (frameIndex + 1) % frames.length;
-      loadingLine.textContent = `${label} ${frames[frameIndex]}`;
+      loadingLine.textContent = `${frames[frameIndex]} ${label}`;
       scrollToBottom();
-    }, 180),
+    }, 90),
   };
 
   setBusy(true);
@@ -363,16 +484,16 @@ async function withLoading(label, action) {
   try {
     const result = await action();
     const elapsed = Date.now() - startedAt;
-    if (elapsed < 350) {
-      await sleep(350 - elapsed);
+    if (elapsed < minDuration) {
+      await sleep(minDuration - elapsed);
     }
     clearInterval(state.loading.timer);
     loadingLine.textContent = `${label} [done]`;
     return result;
   } catch (error) {
     const elapsed = Date.now() - startedAt;
-    if (elapsed < 350) {
-      await sleep(350 - elapsed);
+    if (elapsed < minDuration) {
+      await sleep(minDuration - elapsed);
     }
     clearInterval(state.loading.timer);
     loadingLine.textContent = `${label} [fail]`;
@@ -532,6 +653,18 @@ async function runCommand(rawValue) {
     return;
   }
 
+  if (command === "toot on") {
+    sound.setEnabled(true);
+    appendLine("sound enabled", "line--success");
+    return;
+  }
+
+  if (command === "toot off") {
+    sound.setEnabled(false);
+    appendLine("sound disabled", "line--muted");
+    return;
+  }
+
   if (command === "login" || command === "admin") {
     if (state.status?.adminAuthenticated) {
       appendLine("admin session already active", "line--muted");
@@ -606,13 +739,7 @@ async function runCommand(rawValue) {
     return;
   }
 
-  if (command === "wipe all data") {
-    if (!requireAdmin()) return;
-    beginWipeAllConfirmFlow();
-    return;
-  }
-
-  if (command === "wipe all") {
+  if (command === "wipe all data" || command === "wipe all") {
     if (!requireAdmin()) return;
     beginWipeAllConfirmFlow();
     return;
@@ -643,7 +770,8 @@ async function runCommand(rawValue) {
 }
 
 async function init() {
-  await withLoading("connecting backend", refreshStatus);
+  sound.ensureContext();
+  await withLoading("connecting backend", refreshStatus, { minDuration: 120 });
   printWelcome();
   await state.outputQueue;
   resetPrompt();
@@ -652,13 +780,14 @@ async function init() {
 
 elements.form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  await sound.unlock();
   const rawValue = elements.input.value;
   const value = rawValue.trim();
   if (!value) return;
 
   const maskedValue = state.flow?.type === "admin-login" ? "*".repeat(value.length) : value;
   await appendLine(`${elements.prompt.textContent} ${maskedValue}`, "line--command");
-
+  
   elements.input.value = "";
   elements.input.style.height = "";
 
@@ -675,7 +804,17 @@ elements.form.addEventListener("submit", async (event) => {
   elements.input.focus();
 });
 
-elements.input.addEventListener("focus", scrollToBottom);
+elements.input.addEventListener("pointerdown", () => {
+  sound.unlock().catch(() => {});
+});
+
+elements.input.addEventListener("keydown", () => {
+  sound.unlock().catch(() => {});
+}, { once: true });
+
+elements.input.addEventListener("focus", () => {
+  scrollToBottom();
+});
 elements.input.addEventListener("input", () => {
   elements.input.style.height = "auto";
   elements.input.style.height = `${Math.min(elements.input.scrollHeight, 140)}px`;
