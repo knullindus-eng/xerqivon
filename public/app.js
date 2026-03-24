@@ -3,6 +3,11 @@ import { api } from "./db.js";
 const NORMAL_HELP_LINES = [
   "normal commands",
   "help         - show available commands",
+  "sys          - print system information",
+  "set name <text> - change the heading name",
+  "reset name   - restore heading to KNULL",
+  "glitch on    - enable logo glitch effect",
+  "glitch off   - disable logo glitch effect",
   "installer    - open desktop installer screen",
   "installer direct - download Windows installer",
   "check updates - check and install desktop app updates",
@@ -49,7 +54,58 @@ const PROMPT_TEXT = "root@knull:~$";
 const PASSWORD_PROMPT = "password@knull:~$";
 const SOUND_PREF_KEY = "knull_sound_enabled";
 const BACKGROUND_PREF_KEY = "knull_background_image";
+const DISPLAY_NAME_KEY = "knull_display_name";
+const GLITCH_PREF_KEY = "knull_glitch_enabled";
 const INSTALLER_FILE = "/downloads/KNULL-setup.exe";
+const DEFAULT_DISPLAY_NAME = "KNULL";
+const SYSTEM_INFO = {
+  version: "1.0.2",
+  name: "Xerqivon",
+  admin: "Knull",
+  server: "Render",
+};
+
+const BLOCK_FONT = {
+  A: [" █████╗ ", "██╔══██╗", "███████║", "██╔══██║", "██║  ██║", "╚═╝  ╚═╝"],
+  B: ["██████╗ ", "██╔══██╗", "██████╔╝", "██╔══██╗", "██████╔╝", "╚═════╝ "],
+  C: [" ██████╗", "██╔════╝", "██║     ", "██║     ", "╚██████╗", " ╚═════╝"],
+  D: ["██████╗ ", "██╔══██╗", "██║  ██║", "██║  ██║", "██████╔╝", "╚═════╝ "],
+  E: ["███████╗", "██╔════╝", "█████╗  ", "██╔══╝  ", "███████╗", "╚══════╝"],
+  F: ["███████╗", "██╔════╝", "█████╗  ", "██╔══╝  ", "██║     ", "╚═╝     "],
+  G: [" ██████╗ ", "██╔════╝ ", "██║  ███╗", "██║   ██║", "╚██████╔╝", " ╚═════╝ "],
+  H: ["██╗  ██╗", "██║  ██║", "███████║", "██╔══██║", "██║  ██║", "╚═╝  ╚═╝"],
+  I: ["██╗", "██║", "██║", "██║", "██║", "╚═╝"],
+  J: ["     ██╗", "     ██║", "     ██║", "██   ██║", "╚█████╔╝", " ╚════╝ "],
+  K: ["██╗  ██╗", "██║ ██╔╝", "█████╔╝ ", "██╔═██╗ ", "██║  ██╗", "╚═╝  ╚═╝"],
+  L: ["██╗     ", "██║     ", "██║     ", "██║     ", "███████╗", "╚══════╝"],
+  M: ["███╗   ███╗", "████╗ ████║", "██╔████╔██║", "██║╚██╔╝██║", "██║ ╚═╝ ██║", "╚═╝     ╚═╝"],
+  N: ["███╗   ██╗", "████╗  ██║", "██╔██╗ ██║", "██║╚██╗██║", "██║ ╚████║", "╚═╝  ╚═══╝"],
+  O: [" ██████╗ ", "██╔═══██╗", "██║   ██║", "██║   ██║", "╚██████╔╝", " ╚═════╝ "],
+  P: ["██████╗ ", "██╔══██╗", "██████╔╝", "██╔═══╝ ", "██║     ", "╚═╝     "],
+  Q: [" ██████╗ ", "██╔═══██╗", "██║   ██║", "██║▄▄ ██║", "╚██████╔╝", " ╚══▀▀═╝ "],
+  R: ["██████╗ ", "██╔══██╗", "██████╔╝", "██╔══██╗", "██║  ██║", "╚═╝  ╚═╝"],
+  S: ["███████╗", "██╔════╝", "███████╗", "╚════██║", "███████║", "╚══════╝"],
+  T: ["████████╗", "╚══██╔══╝", "   ██║   ", "   ██║   ", "   ██║   ", "   ╚═╝   "],
+  U: ["██╗   ██╗", "██║   ██║", "██║   ██║", "██║   ██║", "╚██████╔╝", " ╚═════╝ "],
+  V: ["██╗   ██╗", "██║   ██║", "██║   ██║", "╚██╗ ██╔╝", " ╚████╔╝ ", "  ╚═══╝  "],
+  W: ["██╗    ██╗", "██║    ██║", "██║ █╗ ██║", "██║███╗██║", "╚███╔███╔╝", " ╚══╝╚══╝ "],
+  X: ["██╗  ██╗", "╚██╗██╔╝", " ╚███╔╝ ", " ██╔██╗ ", "██╔╝╚██╗", "╚═╝  ╚═╝"],
+  Y: ["██╗   ██╗", "╚██╗ ██╔╝", " ╚████╔╝ ", "  ╚██╔╝  ", "   ██║   ", "   ╚═╝   "],
+  Z: ["███████╗", "╚══███╔╝", "  ███╔╝ ", " ███╔╝  ", "███████╗", "╚══════╝"],
+  0: [" ██████╗ ", "██╔═████╗", "██║██╔██║", "████╔╝██║", "╚██████╔╝", " ╚═════╝ "],
+  1: [" ██╗", "███║", "╚██║", " ██║", " ██║", " ╚═╝"],
+  2: ["██████╗ ", "╚════██╗", " █████╔╝", "██╔═══╝ ", "███████╗", "╚══════╝"],
+  3: ["██████╗ ", "╚════██╗", " █████╔╝", " ╚═══██╗", "██████╔╝", "╚═════╝ "],
+  4: ["██╗  ██╗", "██║  ██║", "███████║", "╚════██║", "     ██║", "     ╚═╝"],
+  5: ["███████╗", "██╔════╝", "███████╗", "╚════██║", "███████║", "╚══════╝"],
+  6: [" ██████╗", "██╔════╝", "██████╗ ", "██╔══██╗", "╚█████╔╝", " ╚════╝ "],
+  7: ["███████╗", "╚════██║", "    ██╔╝", "   ██╔╝ ", "   ██║  ", "   ╚═╝  "],
+  8: [" █████╗ ", "██╔══██╗", "╚█████╔╝", "██╔══██╗", "╚█████╔╝", " ╚════╝ "],
+  9: [" █████╗ ", "██╔══██╗", "╚██████║", " ╚═══██║", " █████╔╝", " ╚════╝ "],
+  "-": ["        ", "        ", "███████╗", "╚══════╝", "        ", "        "],
+  _: ["        ", "        ", "        ", "        ", "        ", "███████╗"],
+  " ": ["   ", "   ", "   ", "   ", "   ", "   "],
+};
 
 const sound = {
   context: null,
@@ -149,6 +205,7 @@ const state = {
   flow: null,
   loading: null,
   outputQueue: Promise.resolve(),
+  displayName: loadDisplayName(),
 };
 
 const elements = {
@@ -177,6 +234,51 @@ function loadBackgroundPreference() {
     return localStorage.getItem(BACKGROUND_PREF_KEY) || "";
   } catch {
     return "";
+  }
+}
+
+function loadGlitchPreference() {
+  try {
+    return localStorage.getItem(GLITCH_PREF_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+function applyGlitchPreference(enabled, persist = true) {
+  document.body.classList.toggle("glitch-off", !enabled);
+
+  if (!persist) return;
+
+  try {
+    localStorage.setItem(GLITCH_PREF_KEY, enabled ? "1" : "0");
+  } catch {
+    // Ignore storage failures and keep the current render.
+  }
+}
+
+function loadDisplayName() {
+  try {
+    const stored = localStorage.getItem(DISPLAY_NAME_KEY)?.trim();
+    return stored || DEFAULT_DISPLAY_NAME;
+  } catch {
+    return DEFAULT_DISPLAY_NAME;
+  }
+}
+
+function saveDisplayName(name) {
+  try {
+    localStorage.setItem(DISPLAY_NAME_KEY, name);
+  } catch {
+    // Ignore storage failures and keep the current in-memory render.
+  }
+}
+
+function resetDisplayName() {
+  try {
+    localStorage.removeItem(DISPLAY_NAME_KEY);
+  } catch {
+    // Ignore storage failures.
   }
 }
 
@@ -326,6 +428,37 @@ function triggerInstallerDownload() {
   link.remove();
 }
 
+function sanitizeDisplayName(value) {
+  const cleaned = value
+    .toUpperCase()
+    .replace(/[^A-Z0-9 _-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 10);
+
+  if (!cleaned) {
+    throw new Error("name must include letters or numbers");
+  }
+
+  return cleaned;
+}
+
+function buildLogoText(name) {
+  const letters = name.split("").map((char) => BLOCK_FONT[char] || BLOCK_FONT[" "]);
+  const rows = Array.from({ length: 6 }, (_, index) =>
+    letters.map((letter) => letter[index]).join(" ")
+  );
+  return rows.join("\n");
+}
+
+function currentLogoText() {
+  const displayName = state.displayName || DEFAULT_DISPLAY_NAME;
+  if (displayName === DEFAULT_DISPLAY_NAME) {
+    return ASCII_LOGO.trim();
+  }
+  return buildLogoText(displayName);
+}
+
 async function openInstallerScreen() {
   renderInstallerLogo();
   elements.installerScreen.hidden = false;
@@ -368,7 +501,7 @@ function appendAscii(text) {
 
 function renderInstallerLogo() {
   elements.installerLogo.innerHTML = "";
-  elements.installerLogo.appendChild(buildAsciiElement(ASCII_LOGO));
+  elements.installerLogo.appendChild(buildAsciiElement(currentLogoText()));
 }
 
 async function animateInstallerScreen() {
@@ -577,8 +710,16 @@ function printStatusLines() {
   );
 }
 
+function printSystemInfo() {
+  appendLine("system", "line--section");
+  appendLine(`version : ${SYSTEM_INFO.version}`);
+  appendLine(`name    : ${SYSTEM_INFO.name}`);
+  appendLine(`admin   : ${SYSTEM_INFO.admin}`);
+  appendLine(`server  : ${SYSTEM_INFO.server}`);
+}
+
 function printWelcome() {
-  appendAscii(ASCII_LOGO);
+  appendAscii(currentLogoText());
   appendLine('type "help" to view commands', "line--section");
   printStatusLines();
   appendSpacer();
@@ -838,6 +979,41 @@ async function runCommand(rawValue) {
     return;
   }
 
+  if (command === "sys") {
+    printSystemInfo();
+    return;
+  }
+
+  if (command.startsWith("set name ")) {
+    const requestedName = rawValue.slice("set name ".length);
+    const nextName = sanitizeDisplayName(requestedName);
+    state.displayName = nextName;
+    saveDisplayName(nextName);
+    clearOutput();
+    appendLine(`heading updated: ${nextName}`, "line--muted");
+    return;
+  }
+
+  if (command === "reset name") {
+    state.displayName = DEFAULT_DISPLAY_NAME;
+    resetDisplayName();
+    clearOutput();
+    appendLine("heading reset to KNULL", "line--muted");
+    return;
+  }
+
+  if (command === "glitch on") {
+    applyGlitchPreference(true);
+    appendLine("glitch effect enabled", "line--muted");
+    return;
+  }
+
+  if (command === "glitch off") {
+    applyGlitchPreference(false);
+    appendLine("glitch effect disabled", "line--muted");
+    return;
+  }
+
   if (command === "installer") {
     await openInstallerScreen();
     return;
@@ -1019,6 +1195,7 @@ async function runCommand(rawValue) {
 
 async function init() {
   sound.ensureContext();
+  applyGlitchPreference(loadGlitchPreference(), false);
   if (isDesktopApp()) {
     try {
       const savedBackground = await getDesktopBackgroundImage();

@@ -108,6 +108,14 @@ body.has-bg-image::after {
   animation-iteration-count: infinite;
 }
 
+body.glitch-off .ascii__line {
+  animation: none;
+  opacity: 1;
+  text-shadow:
+    0 0 10px rgba(255, 255, 255, 0.1),
+    1px 1px 0 rgba(255, 255, 255, 0.06);
+}
+
 @keyframes asciiFlicker {
   0%,
   100% {
