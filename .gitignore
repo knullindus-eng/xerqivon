@@ -4,3 +4,4 @@ server.out.log
 server.err.log
 src-tauri/target/
 src-tauri/gen/
+.tauri/

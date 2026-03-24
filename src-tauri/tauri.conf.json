@@ -9,6 +9,7 @@
     "frontendDist": "https://xerqivon.onrender.com"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
@@ -27,6 +28,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -43,6 +45,17 @@
         "headerImage": "installer-assets/nsis-header.bmp",
         "sidebarImage": "installer-assets/nsis-sidebar.bmp",
         "installMode": "currentUser"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVEQTVDMTA5MjRGN0NERTMKUldUanpmY2tDY0dsN1h2djY4WThYajhYWDJhaW9UWW5hRFNuckFTRm94d2xieWh1WE1iUk81OWcK",
+      "endpoints": [
+        "https://xerqivon.onrender.com/updates/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

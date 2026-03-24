@@ -5,6 +5,7 @@ const NORMAL_HELP_LINES = [
   "help         - show available commands",
   "installer    - open desktop installer screen",
   "installer direct - download Windows installer",
+  "check updates - check and install desktop app updates",
   "bg image     - choose terminal background image",
   "bg clear     - remove terminal background image",
   "login        - admin login",
@@ -206,6 +207,23 @@ function requestBackgroundImage() {
   elements.backgroundPicker.click();
 }
 
+function isDesktopApp() {
+  return Boolean(window.__TAURI__?.core?.invoke);
+}
+
+async function runDesktopUpdateCheck() {
+  if (!isDesktopApp()) {
+    appendLine("check updates is available only in the desktop app", "line--error");
+    return;
+  }
+
+  const result = await withLoading("checking updates", async () => {
+    return window.__TAURI__.core.invoke("check_updates");
+  }, { minDuration: 200 });
+
+  appendLine(result, "line--subtle");
+}
+
 function scrollToBottom() {
   const output = elements.output;
   const follow = () => {
@@ -361,10 +379,10 @@ function appendSpacer() {
 }
 
 function appendTable(title, rows) {
-  appendLine(title, "line--muted");
+  appendLine(title, "line--section");
 
   if (!rows.length) {
-    appendLine("(no rows)", "line--muted");
+    appendLine("(no rows)", "line--subtle");
     return;
   }
 
@@ -381,16 +399,16 @@ function appendTable(title, rows) {
       .map((column, index) => String(row[column] ?? "").padEnd(widths[index], " "))
       .join(" | ");
 
-  appendLine(formatRow(Object.fromEntries(columns.map((column) => [column, column]))), "line--muted");
-  appendLine(widths.map((width) => "-".repeat(width)).join("-+-"), "line--muted");
+  appendLine(formatRow(Object.fromEntries(columns.map((column) => [column, column]))), "line--section");
+  appendLine(widths.map((width) => "-".repeat(width)).join("-+-"), "line--subtle");
   rows.forEach((row) => appendLine(formatRow(row)));
 }
 
 function appendAppList(apps) {
-  appendLine("apps", "line--muted");
+  appendLine("apps", "line--section");
 
   if (!apps.length) {
-    appendLine("(no apps)", "line--muted");
+    appendLine("(no apps)", "line--subtle");
     return;
   }
 
@@ -398,10 +416,10 @@ function appendAppList(apps) {
 }
 
 function appendMailGroups(emails) {
-  appendLine("mails", "line--muted");
+  appendLine("mails", "line--section");
 
   if (!emails.length) {
-    appendLine("(no mails)", "line--muted");
+    appendLine("(no mails)", "line--subtle");
     return;
   }
 
@@ -480,28 +498,28 @@ function beginAdminLoginFlow() {
     answers: {},
   };
   setPrompt(PASSWORD_PROMPT, true);
-  appendLine("enter admin password:", "line--muted");
+  appendLine("enter admin password:", "line--section");
 }
 
 function beginAddFlow() {
   state.flow = { type: "choose-add-target" };
-  appendLine("1. apps", "line--muted");
-  appendLine("2. mails", "line--muted");
-  appendLine("select option number:", "line--muted");
+  appendLine("1. apps", "line--section");
+  appendLine("2. mails", "line--section");
+  appendLine("select option number:", "line--subtle");
 }
 
 function beginBulkAddAppsFlow() {
   state.flow = { type: "add-app-bulk" };
-  appendLine("paste apps in this format:", "line--muted");
-  appendLine("appname,link,description|appname,link,description", "line--muted");
+  appendLine("paste apps in this format:", "line--section");
+  appendLine("appname,link,description|appname,link,description", "line--subtle");
 }
 
 function beginBulkAddMailsFlow() {
   state.flow = { type: "add-mail-bulk" };
-  appendLine("paste mail accounts in this format:", "line--muted");
-  appendLine("email1@gmail.com,email2@yahoo.com,email3@outlook.com", "line--muted");
-  appendLine("or use one email per line. | is also supported.", "line--muted");
-  appendLine("tip: use Shift+Enter for a new line before submitting.", "line--muted");
+  appendLine("paste mail accounts in this format:", "line--section");
+  appendLine("email1@gmail.com,email2@yahoo.com,email3@outlook.com", "line--subtle");
+  appendLine("or use one email per line. | is also supported.", "line--subtle");
+  appendLine("tip: use Shift+Enter for a new line before submitting.", "line--subtle");
 }
 
 function beginWipeAllConfirmFlow() {
@@ -515,13 +533,13 @@ function beginWipeAllConfirmFlow() {
 }
 
 function printHelp() {
-  appendLine("normal commands", "line--muted");
-  NORMAL_HELP_LINES.slice(1).forEach((line) => appendLine(line, "line--muted"));
+  appendLine("normal commands", "line--section");
+  NORMAL_HELP_LINES.slice(1).forEach((line) => appendLine(line));
 
   if (state.status?.adminAuthenticated) {
     appendSpacer();
-    appendLine("admin commands", "line--muted");
-    ADMIN_HELP_LINES.slice(1).forEach((line) => appendLine(line, "line--muted"));
+    appendLine("admin commands", "line--section");
+    ADMIN_HELP_LINES.slice(1).forEach((line) => appendLine(line));
   }
 }
 
@@ -533,17 +551,17 @@ function printStatusLines() {
 
   appendLine(
     state.status.dbConnected ? "neon database connected" : "neon database unavailable",
-    state.status.dbConnected ? "line--success" : "line--error"
+    state.status.dbConnected ? "line--subtle" : "line--error"
   );
   appendLine(
     state.status.adminAuthenticated ? "admin session unlocked" : "admin commands locked",
-    state.status.adminAuthenticated ? "line--success" : "line--muted"
+    state.status.adminAuthenticated ? "line--subtle" : "line--subtle"
   );
 }
 
 function printWelcome() {
   appendAscii(ASCII_LOGO);
-  appendLine('type "help" to view commands', "line--muted");
+  appendLine('type "help" to view commands', "line--section");
   printStatusLines();
   appendSpacer();
 }
@@ -752,8 +770,8 @@ function handleAddChoice(value) {
     return;
   }
 
-  appendLine("invalid option. select 1 or 2.", "line--error");
-  appendLine("select option number:", "line--muted");
+    appendLine("invalid option. select 1 or 2.", "line--error");
+    appendLine("select option number:", "line--subtle");
 }
 
 function normalizeTableName(value) {
@@ -810,6 +828,11 @@ async function runCommand(rawValue) {
   if (command === "installer direct") {
     appendLine("starting installer download", "line--muted");
     triggerInstallerDownload();
+    return;
+  }
+
+  if (command === "check updates") {
+    await runDesktopUpdateCheck();
     return;
   }
 
