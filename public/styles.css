@@ -1,12 +1,12 @@
 :root {
   --bg: #020305;
-  --grid: rgba(43, 179, 255, 0.06);
-  --text: #cfe2f2;
-  --muted: #708395;
-  --accent: #2bb3ff;
-  --accent-soft: rgba(43, 179, 255, 0.12);
-  --success: #55f0a5;
-  --line: rgba(43, 179, 255, 0.16);
+  --grid: rgba(255, 255, 255, 0.04);
+  --text: #f4f8ff;
+  --muted: #f4f8ff;
+  --accent: #f4f8ff;
+  --accent-soft: rgba(255, 255, 255, 0.08);
+  --success: #f4f8ff;
+  --line: rgba(255, 255, 255, 0.12);
 }
 
 * {
@@ -25,6 +25,9 @@ body {
   background: var(--bg);
   color: var(--text);
   overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 body::before {
@@ -34,7 +37,21 @@ body::before {
   pointer-events: none;
   background-image: radial-gradient(circle, var(--grid) 1px, transparent 1px);
   background-size: 22px 22px;
-  opacity: 0.22;
+  opacity: 0.2;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(2, 3, 5, 0.88);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+body.has-bg-image::after {
+  opacity: 1;
 }
 
 .sr-only {
@@ -60,24 +77,26 @@ body::before {
 
 .terminal__output {
   flex: 1;
-  height: calc(100vh - 62px);
-  height: calc(100dvh - 62px);
+  height: calc(100vh - 58px);
+  height: calc(100dvh - 58px);
   min-height: 0;
-  padding: 28px 32px 78px;
+  padding: 22px 28px 70px;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  position: relative;
+  z-index: 1;
 }
 
 .ascii {
   margin: 0 0 16px;
   color: var(--accent);
-  font-size: clamp(0.8rem, 1.15vw, 1rem);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.08;
+  font-size: clamp(0.72rem, 1vw, 0.88rem);
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  line-height: 1.06;
   text-shadow:
-    0 0 10px rgba(43, 179, 255, 0.18),
-    2px 2px 0 rgba(43, 179, 255, 0.12);
+    0 0 8px rgba(255, 255, 255, 0.08),
+    1px 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .ascii__line {
@@ -94,29 +113,29 @@ body::before {
   100% {
     opacity: 0.92;
     text-shadow:
-      0 0 8px rgba(43, 179, 255, 0.14),
-      2px 2px 0 rgba(43, 179, 255, 0.1);
+      0 0 8px rgba(255, 255, 255, 0.08),
+      1px 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   8% {
     opacity: 1;
     text-shadow:
-      0 0 18px rgba(43, 179, 255, 0.24),
-      2px 2px 0 rgba(43, 179, 255, 0.16);
+      0 0 14px rgba(255, 255, 255, 0.12),
+      1px 1px 0 rgba(255, 255, 255, 0.07);
   }
 
   11% {
     opacity: 0.42;
     text-shadow:
-      0 0 3px rgba(43, 179, 255, 0.08),
-      1px 1px 0 rgba(43, 179, 255, 0.06);
+      0 0 3px rgba(255, 255, 255, 0.05),
+      1px 1px 0 rgba(255, 255, 255, 0.03);
   }
 
   13% {
     opacity: 0.98;
     text-shadow:
-      0 0 20px rgba(43, 179, 255, 0.22),
-      2px 2px 0 rgba(43, 179, 255, 0.14);
+      0 0 15px rgba(255, 255, 255, 0.12),
+      1px 1px 0 rgba(255, 255, 255, 0.08);
   }
 
   27% {
@@ -126,8 +145,8 @@ body::before {
   29% {
     opacity: 0.28;
     text-shadow:
-      0 0 2px rgba(43, 179, 255, 0.06),
-      1px 1px 0 rgba(43, 179, 255, 0.04);
+      0 0 2px rgba(255, 255, 255, 0.04),
+      1px 1px 0 rgba(255, 255, 255, 0.03);
   }
 
   31% {
@@ -137,8 +156,8 @@ body::before {
   53% {
     opacity: 1;
     text-shadow:
-      0 0 16px rgba(43, 179, 255, 0.2),
-      2px 2px 0 rgba(43, 179, 255, 0.14);
+      0 0 12px rgba(255, 255, 255, 0.11),
+      1px 1px 0 rgba(255, 255, 255, 0.07);
   }
 
   56% {
@@ -165,13 +184,15 @@ body::before {
 .line {
   margin: 0 0 6px;
   white-space: pre-wrap;
-  line-height: 1.55;
+  line-height: 1.46;
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: 0.84rem;
+  font-weight: 400;
 }
 
 .line--muted {
   color: var(--muted);
+  font-weight: 600;
 }
 
 .line--success {
@@ -180,10 +201,12 @@ body::before {
 
 .line--command {
   color: var(--accent);
+  font-weight: 500;
 }
 
 .line--error {
-  color: #ff7f96;
+  color: var(--text);
+  font-weight: 500;
 }
 
 .line--loading {
@@ -194,6 +217,7 @@ body::before {
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
+  font-weight: 500;
 }
 
 .spacer {
@@ -208,10 +232,11 @@ body::before {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  min-height: 46px;
-  padding: 8px 20px calc(8px + env(safe-area-inset-bottom, 0px));
+  min-height: 42px;
+  padding: 7px 18px calc(7px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line);
   background: rgba(2, 3, 5, 0.98);
+  z-index: 2;
 }
 
 .installer-screen {
@@ -241,24 +266,26 @@ body::before {
 
 .installer-screen__eyebrow {
   margin: 0;
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
   opacity: 0;
+  font-weight: 500;
 }
 
 .installer-screen__copy {
   margin: 0;
   max-width: 36rem;
-  font-size: 0.92rem;
-  line-height: 1.7;
+  font-size: 0.84rem;
+  line-height: 1.65;
   color: var(--text);
   opacity: 0;
 }
 
 .installer-screen__copy--muted {
   color: var(--muted);
+  opacity: 0.8;
 }
 
 .installer-screen__logo {
@@ -296,6 +323,7 @@ body::before {
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 3px;
+  font-weight: 500;
 }
 
 .installer-screen__download:hover,
@@ -303,8 +331,8 @@ body::before {
 .installer-screen__close:hover,
 .installer-screen__close:focus-visible {
   outline: none;
-  border-color: rgba(43, 179, 255, 0.45);
-  background: rgba(43, 179, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .installer-screen__printline.is-visible {
@@ -334,7 +362,8 @@ body::before {
 .prompt {
   color: var(--accent);
   white-space: nowrap;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
+  font-weight: 500;
 }
 
 #command-input {
@@ -345,11 +374,11 @@ body::before {
   color: var(--text);
   font: inherit;
   caret-color: var(--accent);
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   resize: none;
   overflow: hidden;
-  line-height: 1.5;
-  min-height: 22px;
+  line-height: 1.44;
+  min-height: 20px;
   max-height: 140px;
   padding: 0;
 }
@@ -359,30 +388,30 @@ body::before {
 }
 
 #command-input::placeholder {
-  color: rgba(216, 236, 255, 0.28);
+  color: rgba(244, 248, 255, 0.26);
 }
 
 @media (max-width: 700px) {
   .terminal__output {
-    height: calc(100vh - 64px);
-    height: calc(100dvh - 64px);
-    padding: 16px 12px 88px;
+    height: calc(100vh - 62px);
+    height: calc(100dvh - 62px);
+    padding: 14px 12px 86px;
   }
 
   .terminal__inputbar {
     gap: 8px;
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    padding: 7px 10px calc(7px + env(safe-area-inset-bottom, 0px));
   }
 
   .ascii {
-    font-size: 0.58rem;
-    line-height: 1.05;
+    font-size: 0.52rem;
+    line-height: 1.04;
   }
 
   .line,
   .prompt,
   #command-input {
-    font-size: 0.76rem;
+    font-size: 0.72rem;
   }
 
   .prompt {
@@ -392,7 +421,7 @@ body::before {
   }
 
   #command-input {
-    min-height: 20px;
+    min-height: 18px;
     max-height: 120px;
   }
 
@@ -405,34 +434,34 @@ body::before {
   }
 
   .installer-screen__copy {
-    font-size: 0.82rem;
+    font-size: 0.76rem;
   }
 
   .installer-screen__download,
   .installer-screen__close {
     min-width: 0;
     width: 100%;
-    font-size: 0.8rem;
+    font-size: 0.76rem;
   }
 }
 
 @media (max-width: 420px) {
   .terminal__output {
-    padding: 12px 10px 92px;
+    padding: 12px 10px 90px;
   }
 
   .terminal__inputbar {
     align-items: center;
-    min-height: 52px;
+    min-height: 48px;
   }
 
   .ascii {
-    font-size: 0.5rem;
+    font-size: 0.46rem;
   }
 
   .line,
   .prompt,
   #command-input {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
   }
 }

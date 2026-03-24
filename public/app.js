@@ -5,6 +5,8 @@ const NORMAL_HELP_LINES = [
   "help         - show available commands",
   "installer    - open desktop installer screen",
   "installer direct - download Windows installer",
+  "bg image     - choose terminal background image",
+  "bg clear     - remove terminal background image",
   "login        - admin login",
   "admin        - admin login",
   "toot on      - enable sound",
@@ -45,6 +47,7 @@ const ASCII_LOGO = String.raw`
 const PROMPT_TEXT = "root@knull:~$";
 const PASSWORD_PROMPT = "password@knull:~$";
 const SOUND_PREF_KEY = "knull_sound_enabled";
+const BACKGROUND_PREF_KEY = "knull_background_image";
 const INSTALLER_FILE = "/downloads/KNULL-setup.exe";
 
 const sound = {
@@ -151,6 +154,7 @@ const elements = {
   output: document.querySelector("#terminal-output"),
   form: document.querySelector("#command-form"),
   input: document.querySelector("#command-input"),
+  backgroundPicker: document.querySelector("#background-picker"),
   prompt: document.querySelector(".prompt"),
   installerScreen: document.querySelector("#installer-screen"),
   installerLogo: document.querySelector("#installer-logo"),
@@ -165,6 +169,41 @@ function loadSoundPreference() {
   } catch {
     return true;
   }
+}
+
+function loadBackgroundPreference() {
+  try {
+    return localStorage.getItem(BACKGROUND_PREF_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function applyBackgroundImage(dataUrl, persist = true) {
+  const hasImage = Boolean(dataUrl);
+  document.body.style.backgroundImage = hasImage ? `url("${dataUrl}")` : "";
+  document.body.classList.toggle("has-bg-image", hasImage);
+
+  if (!persist) return;
+
+  try {
+    if (hasImage) {
+      localStorage.setItem(BACKGROUND_PREF_KEY, dataUrl);
+    } else {
+      localStorage.removeItem(BACKGROUND_PREF_KEY);
+    }
+  } catch {
+    appendLine("background applied for this session only", "line--muted");
+  }
+}
+
+function clearBackgroundImage() {
+  applyBackgroundImage("");
+}
+
+function requestBackgroundImage() {
+  elements.backgroundPicker.value = "";
+  elements.backgroundPicker.click();
 }
 
 function scrollToBottom() {
@@ -774,6 +813,18 @@ async function runCommand(rawValue) {
     return;
   }
 
+  if (command === "bg image" || command === "background image") {
+    appendLine("choose a background image", "line--muted");
+    requestBackgroundImage();
+    return;
+  }
+
+  if (command === "bg clear" || command === "background clear") {
+    clearBackgroundImage();
+    appendLine("background image cleared", "line--muted");
+    return;
+  }
+
   if (command === "toot on") {
     sound.setEnabled(true);
     appendLine("sound enabled", "line--success");
@@ -918,6 +969,10 @@ async function runCommand(rawValue) {
 
 async function init() {
   sound.ensureContext();
+  const savedBackground = loadBackgroundPreference();
+  if (savedBackground) {
+    applyBackgroundImage(savedBackground, false);
+  }
   await withLoading("connecting backend", refreshStatus, { minDuration: 120 });
   printWelcome();
   await state.outputQueue;
@@ -965,6 +1020,23 @@ elements.input.addEventListener("focus", () => {
 elements.input.addEventListener("input", () => {
   elements.input.style.height = "auto";
   elements.input.style.height = `${Math.min(elements.input.scrollHeight, 140)}px`;
+});
+elements.backgroundPicker.addEventListener("change", () => {
+  const [file] = elements.backgroundPicker.files || [];
+  if (!file) {
+    appendLine("background selection cancelled", "line--muted");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    applyBackgroundImage(String(reader.result || ""));
+    appendLine(`background image loaded: ${file.name}`, "line--muted");
+  };
+  reader.onerror = () => {
+    appendLine("unable to read background image", "line--error");
+  };
+  reader.readAsDataURL(file);
 });
 elements.input.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
