@@ -10,7 +10,7 @@ const NORMAL_HELP_LINES = [
   "glitch off   - disable logo glitch effect",
   "installer    - open desktop installer screen",
   "installer direct - download Windows installer",
-  "check updates - check and install desktop app updates",
+  "check updates - check desktop app updates",
   "bg image     - choose terminal background image",
   "bg clear     - remove terminal background image",
   "login        - admin login",
@@ -338,10 +338,57 @@ async function runDesktopUpdateCheck() {
   }
 
   const result = await withLoading("checking updates", async () => {
-    return window.__TAURI__.core.invoke("check_updates");
+    const payload = await window.__TAURI__.core.invoke("check_updates");
+    return JSON.parse(payload);
   }, { minDuration: 200 });
 
-  appendLine(result, "line--subtle");
+  if (!result) {
+    appendLine("already up to date", "line--subtle");
+    return;
+  }
+
+  state.flow = {
+    type: "confirm-update",
+    updateInfo: result,
+  };
+
+  appendLine("update available", "line--section");
+  appendLine(`current : ${result.current_version}`, "line--subtle");
+  appendLine(`new     : ${result.version}`, "line--section");
+
+  if (result.date) {
+    appendLine(`released: ${formatUpdateDate(result.date)}`, "line--subtle");
+  }
+
+  if (result.notes) {
+    appendLine("changes :", "line--section");
+    formatUpdateNotes(result.notes).forEach((line) => appendLine(`- ${line}`, "line--subtle"));
+  }
+
+  appendLine("install this update? (y/n):", "line--section");
+}
+
+function formatUpdateDate(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(parsed);
+}
+
+function formatUpdateNotes(value) {
+  return String(value)
+    .split(/\r?\n|•|;(?=\s*[A-Z0-9])/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 function scrollToBottom() {
@@ -846,6 +893,20 @@ async function completeFlow() {
     await withLoading("wiping all data", () => api.wipeAllData());
     appendLine("all table data deleted", "line--success");
     clearFlow();
+    return;
+  }
+
+  if (type === "confirm-update") {
+    if (answers.confirm.toLowerCase() !== "y") {
+      appendLine("update cancelled", "line--muted");
+      clearFlow();
+      return;
+    }
+
+    await withLoading("installing update", async () => {
+      await window.__TAURI__.core.invoke("install_update");
+    }, { minDuration: 200 });
+    clearFlow();
   }
 }
 
@@ -908,6 +969,12 @@ async function submitFlowAnswer(value) {
 
   if (state.flow.type === "confirm-wipe-all") {
     state.flow.answers.confirm = value;
+    await completeFlow();
+    return;
+  }
+
+  if (state.flow.type === "confirm-update") {
+    state.flow.answers = { confirm: value };
     await completeFlow();
     return;
   }
