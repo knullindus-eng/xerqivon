@@ -1,6 +1,6 @@
 {
   "name": "knull-terminal-vault",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -16,6 +16,6 @@
     "pg": "^8.16.3"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.1.0"
+    "@tauri-apps/cli": "^2.10.1"
   }
 }

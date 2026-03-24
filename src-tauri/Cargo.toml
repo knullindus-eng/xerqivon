@@ -1,6 +1,6 @@
 [package]
 name = "knull_desktop"
-version = "1.0.0"
+version = "1.0.1"
 description = "KNULL desktop wrapper"
 authors = ["xerqivon"]
 edition = "2021"
