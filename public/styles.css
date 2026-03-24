@@ -220,7 +220,7 @@ body::before {
   z-index: 20;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 24px 24px 84px;
   background:
     linear-gradient(rgba(2, 3, 5, 0.92), rgba(2, 3, 5, 0.96)),
     var(--bg);
@@ -230,18 +230,13 @@ body::before {
   display: none;
 }
 
-.installer-screen__panel {
-  width: min(100%, 760px);
-  min-height: min(70vh, 540px);
-  padding: 28px 26px;
-  border: 1px solid var(--line);
-  background: rgba(4, 7, 10, 0.96);
+.installer-screen__content {
+  width: min(100%, 900px);
   display: grid;
-  align-content: center;
   justify-items: center;
+  align-content: center;
   text-align: center;
-  gap: 12px;
-  box-shadow: 0 0 0 1px rgba(43, 179, 255, 0.04);
+  gap: 14px;
 }
 
 .installer-screen__eyebrow {
@@ -250,16 +245,7 @@ body::before {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--muted);
-}
-
-.installer-screen__title {
-  margin: 0;
-  font-size: clamp(2.4rem, 7vw, 5.8rem);
-  line-height: 0.94;
-  color: var(--accent);
-  text-shadow:
-    0 0 18px rgba(43, 179, 255, 0.12),
-    3px 3px 0 rgba(43, 179, 255, 0.08);
+  opacity: 0;
 }
 
 .installer-screen__copy {
@@ -268,16 +254,29 @@ body::before {
   font-size: 0.92rem;
   line-height: 1.7;
   color: var(--text);
+  opacity: 0;
 }
 
 .installer-screen__copy--muted {
   color: var(--muted);
 }
 
+.installer-screen__logo {
+  min-height: 124px;
+  display: grid;
+  place-items: center;
+}
+
+.installer-screen__logo .ascii {
+  margin: 0;
+  text-align: left;
+}
+
 .installer-screen__actions {
   display: grid;
   gap: 12px;
   margin-top: 10px;
+  opacity: 0;
 }
 
 .installer-screen__download,
@@ -306,6 +305,30 @@ body::before {
   outline: none;
   border-color: rgba(43, 179, 255, 0.45);
   background: rgba(43, 179, 255, 0.06);
+}
+
+.installer-screen__printline.is-visible {
+  animation: installerLineReveal 180ms steps(2, end) forwards;
+}
+
+.installer-screen__logo .ascii__line {
+  opacity: 0;
+}
+
+.installer-screen__logo .ascii__line.is-visible {
+  opacity: 1;
+}
+
+@keyframes installerLineReveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .prompt {
@@ -377,9 +400,8 @@ body::before {
     padding: 14px;
   }
 
-  .installer-screen__panel {
-    min-height: min(66vh, 480px);
-    padding: 22px 16px;
+  .installer-screen__content {
+    gap: 12px;
   }
 
   .installer-screen__copy {

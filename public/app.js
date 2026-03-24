@@ -153,8 +153,10 @@ const elements = {
   input: document.querySelector("#command-input"),
   prompt: document.querySelector(".prompt"),
   installerScreen: document.querySelector("#installer-screen"),
+  installerLogo: document.querySelector("#installer-logo"),
   installerDownload: document.querySelector("#installer-download"),
   installerClose: document.querySelector("#installer-close"),
+  installerPrintLines: [...document.querySelectorAll(".installer-screen__printline")],
 };
 
 function loadSoundPreference() {
@@ -249,11 +251,13 @@ function triggerInstallerDownload() {
   link.remove();
 }
 
-function openInstallerScreen() {
+async function openInstallerScreen() {
+  renderInstallerLogo();
   elements.installerScreen.hidden = false;
   elements.installerScreen.setAttribute("aria-hidden", "false");
   elements.form.setAttribute("aria-hidden", "true");
   elements.form.style.visibility = "hidden";
+  await animateInstallerScreen();
   elements.installerDownload.focus();
 }
 
@@ -265,7 +269,7 @@ function closeInstallerScreen() {
   elements.input.focus();
 }
 
-function appendAscii(text) {
+function buildAsciiElement(text) {
   const pre = document.createElement("pre");
   pre.className = "ascii";
   const lines = text.trim().split("\n");
@@ -279,7 +283,36 @@ function appendAscii(text) {
     pre.appendChild(span);
   });
 
+  return pre;
+}
+
+function appendAscii(text) {
+  const pre = buildAsciiElement(text);
   return enqueueOutput(() => appendNode(pre));
+}
+
+function renderInstallerLogo() {
+  elements.installerLogo.innerHTML = "";
+  elements.installerLogo.appendChild(buildAsciiElement(ASCII_LOGO));
+}
+
+async function animateInstallerScreen() {
+  const asciiLines = [...elements.installerLogo.querySelectorAll(".ascii__line")];
+
+  asciiLines.forEach((line) => line.classList.remove("is-visible"));
+  elements.installerPrintLines.forEach((line) => line.classList.remove("is-visible"));
+
+  for (const line of asciiLines) {
+    line.classList.add("is-visible");
+    sound.playPrint();
+    await sleep(70);
+  }
+
+  for (const line of elements.installerPrintLines) {
+    line.classList.add("is-visible");
+    sound.playPrint();
+    await sleep(86);
+  }
 }
 
 function appendSpacer() {
@@ -731,7 +764,7 @@ async function runCommand(rawValue) {
   }
 
   if (command === "installer") {
-    openInstallerScreen();
+    await openInstallerScreen();
     return;
   }
 
