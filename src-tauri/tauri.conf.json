@@ -1,0 +1,42 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "KNULL",
+  "version": "1.0.0",
+  "identifier": "com.xerqivon.knull",
+  "build": {
+    "beforeDevCommand": "npm start",
+    "devUrl": "http://127.0.0.1:3000",
+    "frontendDist": "https://xerqivon.onrender.com"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "KNULL",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 980,
+        "minHeight": 640,
+        "resizable": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/256x256.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
+  }
+}

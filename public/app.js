@@ -3,6 +3,8 @@ import { api } from "./db.js";
 const NORMAL_HELP_LINES = [
   "normal commands",
   "help         - show available commands",
+  "installer    - open desktop installer screen",
+  "installer direct - download Windows installer",
   "login        - admin login",
   "admin        - admin login",
   "toot on      - enable sound",
@@ -43,6 +45,7 @@ const ASCII_LOGO = String.raw`
 const PROMPT_TEXT = "root@knull:~$";
 const PASSWORD_PROMPT = "password@knull:~$";
 const SOUND_PREF_KEY = "knull_sound_enabled";
+const INSTALLER_FILE = "/downloads/KNULL-setup.exe";
 
 const sound = {
   context: null,
@@ -149,6 +152,9 @@ const elements = {
   form: document.querySelector("#command-form"),
   input: document.querySelector("#command-input"),
   prompt: document.querySelector(".prompt"),
+  installerScreen: document.querySelector("#installer-screen"),
+  installerDownload: document.querySelector("#installer-download"),
+  installerClose: document.querySelector("#installer-close"),
 };
 
 function loadSoundPreference() {
@@ -211,6 +217,52 @@ function appendAppRow(app) {
     appendNode(row);
     sound.playPrint();
   });
+}
+
+function appendDownloadRow(label, href, filename) {
+  const row = document.createElement("div");
+  row.className = "line";
+
+  const text = document.createElement("span");
+  text.textContent = `${label}  `;
+  row.appendChild(text);
+
+  const link = document.createElement("a");
+  link.href = href;
+  link.className = "line-link";
+  link.textContent = "download";
+  link.setAttribute("download", filename);
+  row.appendChild(link);
+
+  enqueueOutput(() => {
+    appendNode(row);
+    sound.playPrint();
+  });
+}
+
+function triggerInstallerDownload() {
+  const link = document.createElement("a");
+  link.href = INSTALLER_FILE;
+  link.download = "KNULL-setup.exe";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function openInstallerScreen() {
+  elements.installerScreen.hidden = false;
+  elements.installerScreen.setAttribute("aria-hidden", "false");
+  elements.form.setAttribute("aria-hidden", "true");
+  elements.form.style.visibility = "hidden";
+  elements.installerDownload.focus();
+}
+
+function closeInstallerScreen() {
+  elements.installerScreen.hidden = true;
+  elements.installerScreen.setAttribute("aria-hidden", "true");
+  elements.form.removeAttribute("aria-hidden");
+  elements.form.style.visibility = "";
+  elements.input.focus();
 }
 
 function appendAscii(text) {
@@ -678,6 +730,17 @@ async function runCommand(rawValue) {
     return;
   }
 
+  if (command === "installer") {
+    openInstallerScreen();
+    return;
+  }
+
+  if (command === "installer direct") {
+    appendLine("starting installer download", "line--muted");
+    triggerInstallerDownload();
+    return;
+  }
+
   if (command === "toot on") {
     sound.setEnabled(true);
     appendLine("sound enabled", "line--success");
@@ -883,6 +946,20 @@ new MutationObserver(() => {
   childList: true,
   subtree: true,
   characterData: true,
+});
+
+elements.installerDownload.addEventListener("click", () => {
+  closeInstallerScreen();
+});
+
+elements.installerClose.addEventListener("click", () => {
+  closeInstallerScreen();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !elements.installerScreen.hidden) {
+    closeInstallerScreen();
+  }
 });
 
 init().catch((error) => {

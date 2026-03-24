@@ -12,6 +12,35 @@ npm start
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Desktop app with Tauri
+
+This repo now includes a Tauri desktop shell in [src-tauri](D:\simplecmd\src-tauri).
+
+- In development, the desktop app opens your local site at `http://127.0.0.1:3000`
+- In production build, the desktop app opens your deployed site at `https://xerqivon.onrender.com`
+
+### Requirements
+
+- Node.js
+- Rust toolchain (`rustup`, `cargo`, `rustc`)
+
+### Tauri commands
+
+```powershell
+cd D:\simplecmd
+npm install
+npm run tauri:dev
+```
+
+To build a Windows app:
+
+```powershell
+cd D:\simplecmd
+npm run tauri:build
+```
+
+If `cargo` or `rustc` is missing, install Rust first from [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install).
+
 ## Environment
 
 Create `.env` from [`.env.example`](D:\simplecmd\.env.example) and set:

@@ -82,6 +82,29 @@
         ></textarea>
       </form>
     </main>
+    <section id="installer-screen" class="installer-screen" hidden aria-hidden="true">
+      <div class="installer-screen__panel">
+        <p class="installer-screen__eyebrow">desktop deployment</p>
+        <h2 class="installer-screen__title">KNULL</h2>
+        <p class="installer-screen__copy">this app is for Knull AKA Navaneeth Reddy</p>
+        <p class="installer-screen__copy installer-screen__copy--muted">
+          install your command center on this PC with the Windows desktop package.
+        </p>
+        <div class="installer-screen__actions">
+          <a
+            id="installer-download"
+            class="installer-screen__download"
+            href="/downloads/KNULL-setup.exe"
+            download="KNULL-setup.exe"
+          >
+            download installer
+          </a>
+          <button id="installer-close" class="installer-screen__close" type="button">
+            back to terminal
+          </button>
+        </div>
+      </div>
+    </section>
 
     <script type="module" src="/app.js"></script>
   </body>
