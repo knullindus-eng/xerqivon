@@ -15,6 +15,8 @@ ManifestDPIAwareness PerMonitorV2
 
 !include MUI2.nsh
 !include FileFunc.nsh
+!include nsDialogs.nsh
+!include WinMessages.nsh
 !include x64.nsh
 !include WordFunc.nsh
 !include "utils.nsh"
@@ -67,6 +69,10 @@ Var UpdateMode
 Var NoShortcutMode
 Var WixMode
 Var OldMainBinaryName
+Var FinishLaunchCheckbox
+Var FinishShortcutCheckbox
+Var FinishLaunchState
+Var FinishShortcutState
 
 Name "${PRODUCTNAME}"
 BrandingText "KNULL // xerqivon // terminal deployment"
@@ -151,8 +157,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 
 ; Installer pages, must be ordered as they appear
 ; 1. Welcome Page
-!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!insertmacro MUI_PAGE_WELCOME
+Page custom KnullWelcomePageCreate KnullWelcomePageLeave
 
 ; 2. License Page (if defined)
 !if "${LICENSE}" != ""
@@ -387,21 +392,144 @@ Var AppStartMenuFolder
 !insertmacro MUI_PAGE_INSTFILES
 
 ; 8. Finish page
-;
-; Don't auto jump to finish page after installation page,
-; because the installation page has useful info that can be used debug any issues with the installer.
-!define MUI_FINISHPAGE_NOAUTOCLOSE
-; Use show readme button in the finish page as a button create a desktop shortcut
-!define MUI_FINISHPAGE_SHOWREADME
-!define MUI_FINISHPAGE_SHOWREADME_FUNCTION CreateOrUpdateDesktopShortcut
-; Show run app after installation.
-!define MUI_FINISHPAGE_RUN
-!define MUI_FINISHPAGE_RUN_FUNCTION RunMainBinary
-!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!insertmacro MUI_PAGE_FINISH
+Page custom KnullFinishPageCreate KnullFinishPageLeave
 
 Function RunMainBinary
   nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" ""
+FunctionEnd
+
+Function KnullStylePage
+  Exch $0
+  SetCtlColors $0 "" 0x020305
+FunctionEnd
+
+Function KnullSetNextText
+  Exch $0
+  GetDlgItem $1 $HWNDPARENT 1
+  SendMessage $1 ${WM_SETTEXT} 0 "STR:$0"
+FunctionEnd
+
+Function KnullWelcomePageCreate
+  ${IfThen} $PassiveMode = 1 ${|} Abort ${|}
+
+  nsDialogs::Create 1018
+  Pop $0
+  ${If} $0 == error
+    Abort
+  ${EndIf}
+
+  Push $0
+  Call KnullStylePage
+
+  CreateFont $1 "Consolas" 26 700
+  CreateFont $2 "Consolas" 10 700
+  CreateFont $3 "Consolas" 10 400
+
+  ${NSD_CreateLabel} 12u 14u 5u 78u ""
+  Pop $4
+  SetCtlColors $4 0x2BB3FF 0x2BB3FF
+
+  ${NSD_CreateLabel} 26u 14u 180u 12u "DESKTOP DEPLOYMENT"
+  Pop $5
+  SendMessage $5 ${WM_SETFONT} $2 1
+  SetCtlColors $5 0x708395 transparent
+
+  ${NSD_CreateLabel} 26u 30u 220u 26u "KNULL"
+  Pop $6
+  SendMessage $6 ${WM_SETFONT} $1 1
+  SetCtlColors $6 0x2BB3FF transparent
+
+  ${NSD_CreateLabel} 26u 60u 215u 18u "command center for Navaneeth Reddy"
+  Pop $7
+  SendMessage $7 ${WM_SETFONT} $3 1
+  SetCtlColors $7 0xD8ECFF transparent
+
+  ${NSD_CreateLabel} 26u 88u 220u 50u "Install the KNULL desktop shell on this PC.$\r$\n$\r$\nThis deployment prepares the runtime, creates the app entry, and gives you a direct desktop launcher for your command center."
+  Pop $8
+  SendMessage $8 ${WM_SETFONT} $3 1
+  SetCtlColors $8 0x9AB2C4 transparent
+
+  ${NSD_CreateLabel} 26u 144u 220u 24u "Press Next to deploy KNULL."
+  Pop $9
+  SendMessage $9 ${WM_SETFONT} $2 1
+  SetCtlColors $9 0x2BB3FF transparent
+
+  Push "Deploy >"
+  Call KnullSetNextText
+
+  nsDialogs::Show
+FunctionEnd
+
+Function KnullWelcomePageLeave
+FunctionEnd
+
+Function KnullFinishPageCreate
+  ${IfThen} $PassiveMode = 1 ${|} Abort ${|}
+
+  nsDialogs::Create 1018
+  Pop $0
+  ${If} $0 == error
+    Abort
+  ${EndIf}
+
+  Push $0
+  Call KnullStylePage
+
+  CreateFont $1 "Consolas" 22 700
+  CreateFont $2 "Consolas" 10 700
+  CreateFont $3 "Consolas" 10 400
+
+  ${NSD_CreateLabel} 12u 14u 5u 78u ""
+  Pop $4
+  SetCtlColors $4 0x55F0A5 0x55F0A5
+
+  ${NSD_CreateLabel} 26u 14u 220u 12u "DEPLOYMENT COMPLETE"
+  Pop $5
+  SendMessage $5 ${WM_SETFONT} $2 1
+  SetCtlColors $5 0x708395 transparent
+
+  ${NSD_CreateLabel} 26u 30u 220u 22u "KNULL IS READY"
+  Pop $6
+  SendMessage $6 ${WM_SETFONT} $1 1
+  SetCtlColors $6 0x55F0A5 transparent
+
+  ${NSD_CreateLabel} 26u 60u 220u 30u "Your command center is installed on this machine.$\r$\nChoose what should happen before you close the installer."
+  Pop $7
+  SendMessage $7 ${WM_SETFONT} $3 1
+  SetCtlColors $7 0xD8ECFF transparent
+
+  ${NSD_CreateCheckBox} 26u 102u 180u 12u "Launch KNULL after closing"
+  Pop $FinishLaunchCheckbox
+  SendMessage $FinishLaunchCheckbox ${BM_SETCHECK} 1 0
+  SetCtlColors $FinishLaunchCheckbox 0xD8ECFF 0x020305
+
+  ${NSD_CreateCheckBox} 26u 120u 180u 12u "Create desktop shortcut"
+  Pop $FinishShortcutCheckbox
+  SendMessage $FinishShortcutCheckbox ${BM_SETCHECK} 1 0
+  SetCtlColors $FinishShortcutCheckbox 0xD8ECFF 0x020305
+
+  ${NSD_CreateLabel} 26u 148u 220u 24u "Press Finish to leave the installer."
+  Pop $8
+  SendMessage $8 ${WM_SETFONT} $2 1
+  SetCtlColors $8 0x2BB3FF transparent
+
+  Push "Finish"
+  Call KnullSetNextText
+
+  nsDialogs::Show
+FunctionEnd
+
+Function KnullFinishPageLeave
+  ${NSD_GetState} $FinishLaunchCheckbox $FinishLaunchState
+  ${NSD_GetState} $FinishShortcutCheckbox $FinishShortcutState
+
+  ${If} $FinishShortcutState = 1
+    Call CreateOrUpdateDesktopShortcut
+  ${EndIf}
+
+  ${If} $FinishLaunchState = 1
+    Call RunMainBinary
+  ${EndIf}
 FunctionEnd
 
 ; Uninstaller Pages
