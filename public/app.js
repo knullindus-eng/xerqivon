@@ -211,6 +211,24 @@ function isDesktopApp() {
   return Boolean(window.__TAURI__?.core?.invoke);
 }
 
+async function getDesktopBackgroundImage() {
+  if (!isDesktopApp()) return "";
+  return (await window.__TAURI__.core.invoke("get_background_image")) || "";
+}
+
+async function saveDesktopBackgroundImage(file) {
+  const buffer = await file.arrayBuffer();
+  return window.__TAURI__.core.invoke("save_background_image", {
+    bytes: Array.from(new Uint8Array(buffer)),
+    mimeType: file.type || "image/png",
+  });
+}
+
+async function clearDesktopBackgroundImage() {
+  if (!isDesktopApp()) return "";
+  return window.__TAURI__.core.invoke("clear_background_image");
+}
+
 async function runDesktopUpdateCheck() {
   if (!isDesktopApp()) {
     appendLine("check updates is available only in the desktop app", "line--error");
@@ -843,6 +861,15 @@ async function runCommand(rawValue) {
   }
 
   if (command === "bg clear" || command === "background clear") {
+    if (isDesktopApp()) {
+      await withLoading("clearing background", async () => {
+        await clearDesktopBackgroundImage();
+      }, { minDuration: 100 });
+      clearBackgroundImage();
+      appendLine("background image cleared permanently", "line--muted");
+      return;
+    }
+
     clearBackgroundImage();
     appendLine("background image cleared", "line--muted");
     return;
@@ -992,9 +1019,20 @@ async function runCommand(rawValue) {
 
 async function init() {
   sound.ensureContext();
-  const savedBackground = loadBackgroundPreference();
-  if (savedBackground) {
-    applyBackgroundImage(savedBackground, false);
+  if (isDesktopApp()) {
+    try {
+      const savedBackground = await getDesktopBackgroundImage();
+      if (savedBackground) {
+        applyBackgroundImage(savedBackground, false);
+      }
+    } catch (error) {
+      console.error("desktop background restore failed", error);
+    }
+  } else {
+    const savedBackground = loadBackgroundPreference();
+    if (savedBackground) {
+      applyBackgroundImage(savedBackground, false);
+    }
   }
   await withLoading("connecting backend", refreshStatus, { minDuration: 120 });
   printWelcome();
@@ -1044,10 +1082,25 @@ elements.input.addEventListener("input", () => {
   elements.input.style.height = "auto";
   elements.input.style.height = `${Math.min(elements.input.scrollHeight, 140)}px`;
 });
-elements.backgroundPicker.addEventListener("change", () => {
+elements.backgroundPicker.addEventListener("change", async () => {
   const [file] = elements.backgroundPicker.files || [];
   if (!file) {
     appendLine("background selection cancelled", "line--muted");
+    return;
+  }
+
+  if (isDesktopApp()) {
+    try {
+      await withLoading("saving background", async () => {
+        await saveDesktopBackgroundImage(file);
+      }, { minDuration: 100 });
+
+      const savedBackground = await getDesktopBackgroundImage();
+      applyBackgroundImage(savedBackground, false);
+      appendLine(`background image saved permanently: ${file.name}`, "line--muted");
+    } catch (error) {
+      appendLine(error.message || "unable to save background image", "line--error");
+    }
     return;
   }
 
