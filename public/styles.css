@@ -45,7 +45,7 @@ body::after {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: rgba(2, 3, 5, 0.88);
+  background: rgba(2, 3, 5, calc(var(--bg-dimness, 88) / 100));
   opacity: 0;
   transition: opacity 160ms ease;
 }
@@ -89,7 +89,7 @@ body.has-bg-image::after {
 
 .ascii {
   margin: 0 0 16px;
-  color: var(--accent);
+  color: var(--logo-color, var(--accent));
   font-size: clamp(0.72rem, 1vw, 0.88rem);
   font-weight: 500;
   letter-spacing: 0.015em;
@@ -253,7 +253,7 @@ body.glitch-off .ascii__line {
   right: 0;
   bottom: 0;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 10px;
   min-height: 42px;
   padding: 7px 18px calc(7px + env(safe-area-inset-bottom, 0px));
@@ -383,13 +383,18 @@ body.glitch-off .ascii__line {
 }
 
 .prompt {
+  display: flex;
+  align-items: center;
   color: var(--accent);
   white-space: nowrap;
   font-size: 0.78rem;
   font-weight: 500;
+  line-height: 1.28;
+  margin: 0;
 }
 
 #command-input {
+  display: block;
   width: 100%;
   border: 0;
   outline: none;
@@ -400,9 +405,10 @@ body.glitch-off .ascii__line {
   font-size: 0.76rem;
   resize: none;
   overflow: hidden;
-  line-height: 1.44;
-  min-height: 20px;
+  line-height: 1.28;
+  min-height: 1.28em;
   max-height: 140px;
+  margin: 0;
   padding: 0;
 }
 

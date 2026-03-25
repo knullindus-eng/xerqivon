@@ -6,6 +6,7 @@ const NORMAL_HELP_LINES = [
   "sys          - print system information",
   "set name <text> - change the heading name",
   "reset name   - restore heading to KNULL",
+  "setcolor <name/code> - change heading color",
   "glitch on    - enable logo glitch effect",
   "glitch off   - disable logo glitch effect",
   "installer    - open desktop installer screen",
@@ -13,6 +14,7 @@ const NORMAL_HELP_LINES = [
   "check updates - check desktop app updates",
   "bg image     - choose terminal background image",
   "bg clear     - remove terminal background image",
+  "dimness <percent> - set background dimness (0-100)",
   "login        - admin login",
   "admin        - admin login",
   "toot on      - enable sound",
@@ -54,8 +56,11 @@ const PROMPT_TEXT = "root@knull:~$";
 const PASSWORD_PROMPT = "password@knull:~$";
 const SOUND_PREF_KEY = "knull_sound_enabled";
 const BACKGROUND_PREF_KEY = "knull_background_image";
+const BG_DIMNESS_PREF_KEY = "knull_bg_dimness";
+const DEFAULT_DIMNESS_PERCENT = 88;
 const DISPLAY_NAME_KEY = "knull_display_name";
 const GLITCH_PREF_KEY = "knull_glitch_enabled";
+const LOGO_COLOR_PREF_KEY = "knull_logo_color";
 const INSTALLER_FILE = "/downloads/KNULL-setup.exe";
 const DEFAULT_DISPLAY_NAME = "KNULL";
 const SYSTEM_INFO = {
@@ -237,6 +242,32 @@ function loadBackgroundPreference() {
   }
 }
 
+function loadDimnessPreference() {
+  try {
+    const rawValue = localStorage.getItem(BG_DIMNESS_PREF_KEY);
+    if (rawValue == null) return DEFAULT_DIMNESS_PERCENT;
+    const parsed = Number.parseInt(rawValue, 10);
+    if (Number.isNaN(parsed)) return DEFAULT_DIMNESS_PERCENT;
+    return Math.max(0, Math.min(100, parsed));
+  } catch {
+    return DEFAULT_DIMNESS_PERCENT;
+  }
+}
+
+function applyDimnessPreference(percent, persist = true) {
+  const clampedPercent = Math.max(0, Math.min(100, Math.round(percent)));
+  document.body.classList.remove("dimness-off");
+  document.documentElement.style.setProperty("--bg-dimness", String(clampedPercent));
+
+  if (!persist) return;
+
+  try {
+    localStorage.setItem(BG_DIMNESS_PREF_KEY, String(clampedPercent));
+  } catch {
+    // Ignore storage failures and keep the current render.
+  }
+}
+
 function loadGlitchPreference() {
   try {
     return localStorage.getItem(GLITCH_PREF_KEY) !== "0";
@@ -280,6 +311,43 @@ function resetDisplayName() {
   } catch {
     // Ignore storage failures.
   }
+}
+
+function loadLogoColorPreference() {
+  try {
+    return localStorage.getItem(LOGO_COLOR_PREF_KEY)?.trim() || "";
+  } catch {
+    return "";
+  }
+}
+
+function applyLogoColor(color, persist = true) {
+  const nextColor = color?.trim() || "";
+
+  if (nextColor) {
+    document.documentElement.style.setProperty("--logo-color", nextColor);
+  } else {
+    document.documentElement.style.removeProperty("--logo-color");
+  }
+
+  if (!persist) return;
+
+  try {
+    if (nextColor) {
+      localStorage.setItem(LOGO_COLOR_PREF_KEY, nextColor);
+    } else {
+      localStorage.removeItem(LOGO_COLOR_PREF_KEY);
+    }
+  } catch {
+    // Ignore storage failures and keep the active color for this session.
+  }
+}
+
+function isValidCssColor(value) {
+  const probe = document.createElement("span");
+  probe.style.color = "";
+  probe.style.color = value;
+  return probe.style.color !== "";
 }
 
 function applyBackgroundImage(dataUrl, persist = true) {
@@ -1069,6 +1137,29 @@ async function runCommand(rawValue) {
     return;
   }
 
+  if (command.startsWith("setcolor ")) {
+    const requestedColor = rawValue.slice("setcolor ".length).trim();
+    if (!requestedColor) {
+      appendLine("usage: setcolor <color name or code>", "line--error");
+      return;
+    }
+
+    if (requestedColor.toLowerCase() === "default") {
+      applyLogoColor("");
+      appendLine("heading color reset to default", "line--muted");
+      return;
+    }
+
+    if (!isValidCssColor(requestedColor)) {
+      appendLine("invalid color. use a CSS color name or hex code", "line--error");
+      return;
+    }
+
+    applyLogoColor(requestedColor);
+    appendLine(`heading color updated: ${requestedColor}`, "line--muted");
+    return;
+  }
+
   if (command === "glitch on") {
     applyGlitchPreference(true);
     appendLine("glitch effect enabled", "line--muted");
@@ -1115,6 +1206,31 @@ async function runCommand(rawValue) {
 
     clearBackgroundImage();
     appendLine("background image cleared", "line--muted");
+    return;
+  }
+
+  if (command === "dimness") {
+    appendLine(`current background dimness: ${loadDimnessPreference()}%`, "line--muted");
+    return;
+  }
+
+  if (command.startsWith("dimness ")) {
+    const input = rawValue.slice("dimness ".length).trim();
+    const match = input.match(/^(\d{1,3})(?:\s*%)?$/);
+
+    if (!match) {
+      appendLine("usage: dimness <percent>   example: dimness 20%", "line--error");
+      return;
+    }
+
+    const percent = Number.parseInt(match[1], 10);
+    if (percent < 0 || percent > 100) {
+      appendLine("dimness percent must be between 0 and 100", "line--error");
+      return;
+    }
+
+    applyDimnessPreference(percent);
+    appendLine(`background dimness set to ${percent}%`, "line--muted");
     return;
   }
 
@@ -1262,7 +1378,9 @@ async function runCommand(rawValue) {
 
 async function init() {
   sound.ensureContext();
+  applyDimnessPreference(loadDimnessPreference(), false);
   applyGlitchPreference(loadGlitchPreference(), false);
+  applyLogoColor(loadLogoColorPreference(), false);
   if (isDesktopApp()) {
     try {
       const savedBackground = await getDesktopBackgroundImage();
