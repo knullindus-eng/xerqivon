@@ -59,7 +59,7 @@ const GLITCH_PREF_KEY = "knull_glitch_enabled";
 const INSTALLER_FILE = "/downloads/KNULL-setup.exe";
 const DEFAULT_DISPLAY_NAME = "KNULL";
 const SYSTEM_INFO = {
-  version: "1.0.2",
+  version: "1.0.3",
   name: "Xerqivon",
   admin: "Knull",
   server: "Render",
