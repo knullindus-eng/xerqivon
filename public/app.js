@@ -14,7 +14,7 @@ const NORMAL_HELP_LINES = [
   "check updates - check desktop app updates",
   "bg image     - choose terminal background image",
   "bg clear     - remove terminal background image",
-  "dimness <percent> - set background dimness (0-100)",
+  "dimness      - adjust background dimness",
   "login        - admin login",
   "admin        - admin login",
   "toot on      - enable sound",
@@ -480,6 +480,46 @@ function appendLineNow(text, variant = "") {
 
 function appendLine(text, variant = "") {
   return enqueueOutput(() => appendLineNow(text, variant));
+}
+
+function appendDimnessControl() {
+  return enqueueOutput(() => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "dimness-control";
+
+    const label = document.createElement("div");
+    label.className = "line line--section dimness-control__label";
+    label.textContent = `background dimness ${loadDimnessPreference()}%`;
+
+    const sliderRow = document.createElement("div");
+    sliderRow.className = "dimness-control__row";
+
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = "0";
+    slider.max = "100";
+    slider.step = "1";
+    slider.value = String(loadDimnessPreference());
+    slider.className = "dimness-control__slider";
+    slider.setAttribute("aria-label", "Background dimness");
+
+    const value = document.createElement("span");
+    value.className = "dimness-control__value";
+    value.textContent = `${slider.value}%`;
+
+    slider.addEventListener("input", () => {
+      const percent = Number.parseInt(slider.value, 10);
+      applyDimnessPreference(percent);
+      label.textContent = `background dimness ${percent}%`;
+      value.textContent = `${percent}%`;
+    });
+
+    sliderRow.append(slider, value);
+    wrapper.append(label, sliderRow);
+    appendNode(wrapper);
+    scrollToBottom();
+    return wrapper;
+  });
 }
 
 function appendAppRow(app) {
@@ -1198,27 +1238,12 @@ async function runCommand(rawValue) {
   }
 
   if (command === "dimness") {
-    appendLine(`current background dimness: ${loadDimnessPreference()}%`, "line--muted");
+    appendDimnessControl();
     return;
   }
 
   if (command.startsWith("dimness ")) {
-    const input = rawValue.slice("dimness ".length).trim();
-    const match = input.match(/^(\d{1,3})(?:\s*%)?$/);
-
-    if (!match) {
-      appendLine("usage: dimness <percent>   example: dimness 20%", "line--error");
-      return;
-    }
-
-    const percent = Number.parseInt(match[1], 10);
-    if (percent < 0 || percent > 100) {
-      appendLine("dimness percent must be between 0 and 100", "line--error");
-      return;
-    }
-
-    applyDimnessPreference(percent);
-    appendLine(`background dimness set to ${percent}%`, "line--muted");
+    appendLine('use "dimness" to open the dimness slider', "line--muted");
     return;
   }
 

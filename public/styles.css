@@ -256,6 +256,37 @@ body.glitch-off .ascii__line {
   font-weight: 400;
 }
 
+.dimness-control {
+  margin: 0 0 10px;
+}
+
+.dimness-control__label {
+  margin-bottom: 8px;
+}
+
+.dimness-control__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 420px;
+}
+
+.dimness-control__slider {
+  flex: 1;
+  margin: 0;
+  accent-color: #ffffff;
+  cursor: pointer;
+  background: transparent;
+}
+
+.dimness-control__value {
+  min-width: 42px;
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-align: right;
+}
+
 .spacer {
   height: 12px;
 }
@@ -456,6 +487,14 @@ body.glitch-off .ascii__line {
     line-height: 1.04;
   }
 
+  .dimness-control__row {
+    max-width: none;
+  }
+
+  .dimness-control__value {
+    font-size: 0.66rem;
+  }
+
   .line,
   .prompt,
   #command-input {
@@ -509,6 +548,15 @@ body.glitch-off .ascii__line {
 
   .ascii {
     font-size: 0.46rem;
+  }
+
+  .dimness-control__row {
+    gap: 10px;
+  }
+
+  .dimness-control__value {
+    min-width: 38px;
+    font-size: 0.62rem;
   }
 
   .line,
