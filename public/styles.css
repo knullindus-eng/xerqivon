@@ -75,12 +75,25 @@ body.has-bg-image::after {
   min-height: 0;
 }
 
+.terminal__brand {
+  margin: 0;
+  padding: 14px 28px 0;
+  position: relative;
+  z-index: 1;
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.68;
+}
+
 .terminal__output {
   flex: 1;
   height: calc(100vh - 58px);
   height: calc(100dvh - 58px);
   min-height: 0;
-  padding: 22px 28px 70px;
+  padding: 14px 28px 70px;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   position: relative;
@@ -258,7 +271,7 @@ body.glitch-off .ascii__line {
   min-height: 42px;
   padding: 7px 18px calc(7px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line);
-  background: rgba(2, 3, 5, 0.98);
+  background: transparent;
   z-index: 2;
 }
 
@@ -432,6 +445,12 @@ body.glitch-off .ascii__line {
     padding: 7px 10px calc(7px + env(safe-area-inset-bottom, 0px));
   }
 
+  .terminal__brand {
+    padding: 10px 10px 0;
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+  }
+
   .ascii {
     font-size: 0.52rem;
     line-height: 1.04;
@@ -482,6 +501,10 @@ body.glitch-off .ascii__line {
   .terminal__inputbar {
     align-items: center;
     min-height: 48px;
+  }
+
+  .terminal__brand {
+    font-size: 0.54rem;
   }
 
   .ascii {

@@ -5,7 +5,7 @@ const NORMAL_HELP_LINES = [
   "help         - show available commands",
   "sys          - print system information",
   "set name <text> - change the heading name",
-  "reset name   - restore heading to KNULL",
+  "reset name   - restore heading to XERQIVON",
   "setcolor <name/code> - change heading color",
   "glitch on    - enable logo glitch effect",
   "glitch off   - disable logo glitch effect",
@@ -43,17 +43,8 @@ const ADMIN_HELP_LINES = [
   "seed         - insert sample data",
 ];
 
-const ASCII_LOGO = String.raw`
-██╗  ██╗███╗   ██╗██╗   ██╗██╗     ██╗
-██║ ██╔╝████╗  ██║██║   ██║██║     ██║
-█████╔╝ ██╔██╗ ██║██║   ██║██║     ██║
-██╔═██╗ ██║╚██╗██║██║   ██║██║     ██║
-██║  ██╗██║ ╚████║╚██████╔╝███████╗███████╗
-╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚══════╝
-`;
-
-const PROMPT_TEXT = "root@knull:~$";
-const PASSWORD_PROMPT = "password@knull:~$";
+const PROMPT_TEXT = "root@xerqivon:~$";
+const PASSWORD_PROMPT = "password@xerqivon:~$";
 const SOUND_PREF_KEY = "knull_sound_enabled";
 const BACKGROUND_PREF_KEY = "knull_background_image";
 const BG_DIMNESS_PREF_KEY = "knull_bg_dimness";
@@ -62,10 +53,10 @@ const DISPLAY_NAME_KEY = "knull_display_name";
 const GLITCH_PREF_KEY = "knull_glitch_enabled";
 const LOGO_COLOR_PREF_KEY = "knull_logo_color";
 const INSTALLER_FILE = "/downloads/KNULL-setup.exe";
-const DEFAULT_DISPLAY_NAME = "KNULL";
+const DEFAULT_DISPLAY_NAME = "XERQIVON";
 const SYSTEM_INFO = {
   version: "1.0.3",
-  name: "Xerqivon",
+  name: "xerqivon",
   admin: "Knull",
   server: "Render",
 };
@@ -568,9 +559,6 @@ function buildLogoText(name) {
 
 function currentLogoText() {
   const displayName = state.displayName || DEFAULT_DISPLAY_NAME;
-  if (displayName === DEFAULT_DISPLAY_NAME) {
-    return ASCII_LOGO.trim();
-  }
   return buildLogoText(displayName);
 }
 
@@ -1133,7 +1121,7 @@ async function runCommand(rawValue) {
     state.displayName = DEFAULT_DISPLAY_NAME;
     resetDisplayName();
     clearOutput();
-    appendLine("heading reset to KNULL", "line--muted");
+    appendLine("heading reset to XERQIVON", "line--muted");
     return;
   }
 
